@@ -192,9 +192,12 @@ class AdventCalendar:
         """Locate the first line numbers of the README file's puzzle calendar table."""
         with open(self._readme_file, mode="r") as file:
             lines = file.readlines()
-        title = [i for i, line in enumerate(lines)
-                 if line == "### Puzzle calendar:\n"][0]
-        return title + 1
+        section_found = True
+        for n, line in enumerate(lines):
+            if line == "### Puzzle calendar:\n":
+                section_found = True
+            if section_found and line.startswith("| "):
+                return n
 
     def _load_from_readme(self) -> pandas.DataFrame:
         """Extract available data from the puzzle calendar printed in the README file."""
