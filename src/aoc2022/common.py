@@ -15,7 +15,7 @@ YEAR = 2022
 BASE_PATH = Path(__file__).parent
 # noinspection SpellCheckingInspection
 DAILY_NAMES = tuple([
-    "Day 1: Calorie Counting", "Day 2: -", "Day 3: -",
+    "Day 1: Calorie Counting", "Day 2: Rock Paper Scissors", "Day 3: -",
     "Day 4: -", "Day 5: -", "Day 6: -",
     "Day 7: -", "Day 8: -", "Day 9: -",
     "Day 10: -", "Day 11: -", "Day 12: -",
@@ -229,9 +229,6 @@ class AdventCalendar:
         empty_df = pandas.DataFrame(
             data="-", columns=["Puzzle", "Stars", "Solution 1", "Solution 2", "Time"],
             index=pandas.RangeIndex(start=1, stop=26, name="Day"))
-        puzzle_map = {int(day): name for day, name in
-                      [name.removeprefix("Day ").split(": ") for name in DAILY_NAMES]}
-        empty_df["Puzzle"] = empty_df.index.map(puzzle_map)
         calendar = AdventCalendar(data=empty_df)
         calendar._write_to_readme()
         return calendar
@@ -273,6 +270,7 @@ class AdventCalendar:
         totals.loc[:, "Day"] = "**Totals**"
         totals.loc[:, "Stars"] = f"**{total_stars}**:star:"
         totals.loc[:, "Time"] = f"**{self.solver.format_timing(value=total_time)}**"
+        data = self._add_puzzle_names(data_frame=data)
         data = self._add_hyper_links(data_frame=data)
         data = pandas.concat(objs=[data, totals], ignore_index=True)
         data.columns = [f"**{name}**" for name in data.columns]
@@ -280,6 +278,12 @@ class AdventCalendar:
             index=False, tablefmt="pipe",
             colalign=("center", "left", "center", "center", "center", "center"))
         return (text + "\n").splitlines(keepends=True)
+
+    @staticmethod
+    def _add_puzzle_names(data_frame: pandas.DataFrame) -> pandas.DataFrame:
+        """Update the puzzle names from the global daily-names map."""
+        data_frame["Puzzle"] = [name.split(": ")[1] for name in DAILY_NAMES]
+        return data_frame
 
     def _add_hyper_links(self, data_frame: pandas.DataFrame) -> pandas.DataFrame:
         """Add hyperlinks to puzzle pages and to solution scripts in GitHub."""
