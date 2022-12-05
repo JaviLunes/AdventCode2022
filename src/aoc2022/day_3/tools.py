@@ -31,7 +31,7 @@ class RuckSack:
 
 
 class RuckSackPack:
-    """Sequence of the RuckSack of each Elf in the expedition."""
+    """Sequence of RuckSack objects carried by the Elves."""
     def __init__(self, items_list: list[str]):
         self.sacks = [RuckSack(items=items) for items in items_list]
         self._priority_map = {char: i + 1 for i, char in enumerate(ascii_letters)}
