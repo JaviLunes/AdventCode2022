@@ -4,8 +4,13 @@
 # Standard library imports:
 import sys
 
+# Third party imports:
+from aoc_tools.puzzle_solving import AdventCalendar, AdventSolver
+from aoc_tools.puzzle_building import AdventBuilder
+
 # Local application imports:
-from aoc2022.common import AdventBuilder, AdventCalendar, AdventSolver
+from aoc2022.info import BASE_PATH_PUZZLES, BASE_PATH_TESTS, FILE_PATH_README
+from aoc2022.info import PUZZLE_NAMES, YEAR
 
 
 def main():
@@ -20,23 +25,25 @@ def main():
         _print_help()
         sys.exit(2)
     else:
+        builder = AdventBuilder(
+            year=YEAR, puzzles_base_path=BASE_PATH_PUZZLES,
+            puzzle_names=PUZZLE_NAMES, tests_base_path=BASE_PATH_TESTS)
+        solver = AdventSolver(year=YEAR, puzzle_names=PUZZLE_NAMES)
+        calendar = AdventCalendar(readme_file=FILE_PATH_README, solver=solver)
         if flag in ("-h", "--help"):
             _print_help()
             sys.exit(0)
         elif flag in ("-b", "--build"):
-            builder = AdventBuilder()
             if day == -1:
                 builder.build_all_templates()
             else:
                 builder.build_templates(day=day)
         elif flag in ("-s", "--solve"):
-            solver = AdventSolver()
             if day == -1:
                 solver.print_all_days()
             else:
                 solver.print_day(day=day)
         elif flag in ("-r", "--register"):
-            calendar = AdventCalendar()
             if day == -1:
                 calendar.register_all_days()
             else:
@@ -50,7 +57,7 @@ def main():
 def _print_help():
     """Print usage information about the main function and its parameters."""
     usage = f"""\nUsage:
-        -m aoc2022 [OPTION] [day]
+        -m aoc{YEAR} [OPTION] [day]
     Arguments:
         -h, --help:
             Display this usage message and exit.
