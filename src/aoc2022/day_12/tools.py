@@ -17,21 +17,6 @@ class Point:
     def __repr__(self) -> str:
         return f"({self.x},{self.y},{self.z})"
 
-    def can_reach(self, other: "Point") -> bool:
-        """Check if a hiker could reach another (different) Point from this Point."""
-        is_close_z = other.z - self.z <= 1
-        return self._is_adjacent(other=other) and is_close_z
-
-    def can_be_reached(self, other: "Point") -> bool:
-        """Check if a hiker could reach this Point from another (different) Point."""
-        is_close_z = self.z - other.z <= 1
-        return self._is_adjacent(other=other) and is_close_z
-
-    def _is_adjacent(self, other: "Point") -> bool:
-        """Check if this Point exactly ONE unit away from another Point."""
-        d_x, d_y = abs(self.x - other.x), abs(self.y - other.y)
-        return d_x + d_y == 1
-
     @property
     def xy(self) -> tuple[int, int]:
         """Provide a tuple with the X and Y coordinates of this Point."""
@@ -39,7 +24,7 @@ class Point:
 
 
 class Node(Point):
-    """Point able to behave as a node in an A* search algorithm."""
+    """Point that can behave as a node in an A* search algorithm."""
     __slots__ = ["g", "parent"]
 
     def __init__(self, x: int, y: int, z: int, g: int, parent: "Node" = None):
@@ -71,7 +56,7 @@ class ElvesMaps:
     """App for computing optimized hiking paths, now without Numpy!."""
     def __init__(self, height_map: list[str]):
         self._z_map = self._get_z_map()
-        self._points = set(self._process_heights(heights=height_map))
+        self._points = {p.xy: p for p in self._process_heights(heights=height_map)}
 
     @staticmethod
     def _get_z_map() -> dict[str, int]:
@@ -115,7 +100,7 @@ class ElvesMaps:
         # Build lists / queues / min heaps / sets / cost maps:
         pending_nodes = [start]
         visited_nodes = set()
-        best_g_costs = {point.xy: 99999 for point in self._points}
+        best_g_costs = {point.xy: 99999 for point in self._points.values()}
         best_g_costs[start.xy] = start.g
         # Check each pending node one at a time, from lowest to greatest g cost:
         while pending_nodes:
@@ -141,15 +126,22 @@ class ElvesMaps:
 
     def _get_reachable_nodes(self, node: Node) -> Iterable[Node]:
         """Return every stored node that can be reached by the provided node."""
-        for point in self._points:
-            if node.can_reach(other=point):
-                yield Node.from_point(point=point, g=node.g + 1, parent=node)
+        for neighbour in self._get_neighbours(node=node):
+            if neighbour.z - node.z <= 1:
+                yield Node.from_point(point=neighbour, g=node.g + 1, parent=node)
 
     def _get_reaching_nodes(self, node: Node) -> Iterable[Node]:
         """Return every stored node that can reach the provided node."""
-        for point in self._points:
-            if node.can_be_reached(other=point):
-                yield Node.from_point(point=point, g=node.g + 1, parent=node)
+        for neighbour in self._get_neighbours(node=node):
+            if node.z - neighbour.z <= 1:
+                yield Node.from_point(point=neighbour, g=node.g + 1, parent=node)
+
+    def _get_neighbours(self, node: Node) -> Iterable[Node]:
+        """Return every Node adjacent to the provided Node."""
+        for dx, dy in [(-1, 0), (0, -1), (1, 0), (0, 1)]:
+            point = self._points.get((node.x + dx, node.y + dy), None)
+            if point is not None:
+                yield point
 
     def _is_goal_node(self, node: Node) -> bool:
         """Check if the provided node is the end 'E' node."""
