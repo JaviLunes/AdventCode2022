@@ -1,6 +1,9 @@
 # coding=utf-8
 """Tools used for solving the Day 13: Distress Signal puzzle."""
 
+# Standard library imports:
+import math
+
 
 class Packet:
     """Unit of data forming a distress signal."""
@@ -10,19 +13,20 @@ class Packet:
     def __repr__(self) -> str:
         return self.value
 
+    def __eq__(self, other: "Packet") -> bool:
+        return self.value == other.value
 
-class Pair:
-    """Group of two Packet objects."""
-    def __init__(self, packet_left: Packet, packet_right: Packet):
-        self._left = packet_left
-        self._right = packet_right
+    def __lt__(self, other: "Packet") -> bool:
+        return self._is_lower(other=other)
 
-    @property
-    def ordered(self) -> bool:
-        """Check if the two packets of this Pair are properly ordered."""
-        return self._is_ordered(left=self._left.value, right=self._right.value)
+    def __le__(self, other) -> bool:
+        return self == other or self < other
 
-    def _is_ordered(self, left: str, right: str) -> bool:
+    def _is_lower(self, other: "Packet") -> bool:
+        """Check if the value of this Packet is lower than other Packet's value."""
+        left, right = self.value, other.value
+        if left == right:
+            return False
         while left or right:
             left_char, right_char = left[0], right[0]
             left, right = left[1:], right[1:]
@@ -61,26 +65,55 @@ class Pair:
             remain = remain[1:]
         return number, remain
 
-    @classmethod
-    def from_string_packets(cls, packet_left: str, packet_right: str) -> "Pair":
-        """Create a new Pair from the string representations of two Packet objects."""
-        return cls(packet_left=Packet(value=packet_left),
-                   packet_right=Packet(value=packet_right))
-
 
 class DistressSignal:
     """Sequence of Packet objects composing a mysterious communication."""
-    def __init__(self, packet_pairs: list[Pair]):
-        self.pairs = packet_pairs
+    def __init__(self, packets: list[Packet]):
+        self._packets = packets
+
+    @property
+    def pairs(self) -> list[tuple[Packet, Packet]]:
+        """Provide all stored Packet objects, grouped in pairs."""
+        n = len(self._packets)
+        left_slice, right_slice = slice(0, n, 2), slice(1, n, 2)
+        return list(zip(self._packets[left_slice], self._packets[right_slice]))
 
     @property
     def ordered_pairs_sum(self) -> int:
-        """Sum of indexes of the stored Pair objects that are ordered."""
-        return sum(i + 1 for i, pair in enumerate(self.pairs) if pair.ordered)
+        """Provide the sum of indexes of the stored Pair objects that are ordered."""
+        return sum(i + 1 for i, pair in enumerate(self.pairs) if pair[0] < pair[1])
+
+    @property
+    def sorted_packets(self) -> list[Packet]:
+        """Provide the stored Packet objects, sorted in increasing value order."""
+        packets = [*self._packets] + self._get_divider_packets()
+        return sorted(packets)
+
+    @staticmethod
+    def _get_divider_packets() -> list[Packet]:
+        """Provide additional Packet objects required by the distress signal protocol."""
+        return [Packet(value="[[2]]"), Packet(value="[[6]]")]
+
+    @property
+    def decoder_key(self) -> int:
+        """Provide the decoder key for this DistressSignal."""
+        sorted_packets = self.sorted_packets
+        dividers = self._get_divider_packets()
+        return math.prod(sorted_packets.index(divider) + 1 for divider in dividers)
+
+    @property
+    def decoder_key_fast(self) -> int:
+        """Provide the decoder key for this DistressSigna, faster but less pretty."""
+        dividers = self._get_divider_packets()
+        lower_than_counts = {divider.value: 0 for divider in dividers}
+        for packet in self._packets + dividers:
+            for divider in dividers:
+                if packet < divider:
+                    lower_than_counts[divider.value] += 1
+        return math.prod(count + 1 for count in lower_than_counts.values())
 
     @classmethod
-    def from_signal_lines(cls, signal_lines: list[str]) -> "DistressSignal":
-        """Create a new DistressSignal from string rows representing pairs of packets."""
-        pairs_lines = "|".join(signal_lines).split("||")
-        pairs = [Pair.from_string_packets(*s.split("|")) for s in pairs_lines]
-        return cls(packet_pairs=pairs)
+    def from_strings(cls, signal_lines: list[str]) -> "DistressSignal":
+        """Create a new DistressSignal from string rows representing Packet objects."""
+        packet_lines = "|".join(signal_lines).replace("||", "|").split("|")
+        return cls(packets=[Packet(value=line) for line in packet_lines])
