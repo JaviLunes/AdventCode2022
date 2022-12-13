@@ -14,7 +14,7 @@ PUZZLE_NAMES = tuple([
     "Day 6: Tuning Trouble", "Day 7: No Space Left On Device",
     "Day 8: Treetop Tree House", "Day 9: Rope Bridge", "Day 10: Cathode-Ray Tube",
     "Day 11: Monkey in the Middle", "Day 12: Hill Climbing Algorithm",
-    "-", "-", "-",
+    "Day 13: Distress Signal", "-", "-",
     "-", "-", "-",
     "-", "-", "-",
     "-", "-", "-",
