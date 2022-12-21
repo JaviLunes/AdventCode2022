@@ -2,151 +2,116 @@
 """Tools used for solving the Day 12: Hill Climbing Algorithm puzzle."""
 
 # Standard library imports:
-from collections.abc import Callable, Iterable
-import heapq
+from collections.abc import Iterable
 from string import ascii_lowercase
 
+# Third party imports:
+from aoc_tools.algorithms.a_star_search import Node, a_star_search
 
-class Point:
-    """Location in a 2D map with an additional Z (height) coordinate."""
-    __slots__ = ["x", "y", "z"]
 
-    def __init__(self, x: int, y: int, z: int):
-        self.x, self.y, self.z = x, y, z
+class TrailStage(Node):
+    """Each discrete location visited during the ascension from the start point."""
+    __slots__ = ["x", "y", "z", "n", "_heights_map"]
 
-    def __repr__(self) -> str:
-        return f"({self.x},{self.y},{self.z})"
+    def __init__(self, x: int, y: int, n: int, heights_map: dict[tuple[int, int], int],
+                 parent: "TrailStage" = None):
+        super().__init__(parent=parent)
+        self.x, self.y = x, y
+        self.n = n
+        self.z = heights_map[(x, y)]
+        self._heights_map = heights_map
+
+    @property
+    def id(self) -> str:
+        """Provide a string identifier unique to this TrailStage."""
+        return f"{self.x},{self.y}"
+
+    @property
+    def g(self) -> int:
+        """Compute the cost for reaching this TrailStage from the search start point."""
+        return self.n
+
+    @property
+    def h(self) -> int:
+        """Estimate the cost for reaching the search goal from this TrailStage."""
+        return 0
 
     @property
     def xy(self) -> tuple[int, int]:
-        """Provide a tuple with the X and Y coordinates of this Point."""
+        """Provide a tuple with the XY coordinates of this TrailStage."""
         return self.x, self.y
 
+    def get_successors(self) -> Iterable["TrailStage"]:
+        """List all nodes to search that are directly reachable from this TrailStage."""
+        for dx, dy in [(-1, 0), (0, -1), (1, 0), (0, 1)]:
+            x, y = self.x + dx, self.y + dy
+            s_z = self._heights_map.get((x, y), None)
+            if self._is_valid_z(z=s_z):
+                yield self.__class__(
+                    x=x, y=y, n=self.n + 1, heights_map=self._heights_map, parent=self)
 
-class Node(Point):
-    """Point that can behave as a node in an A* search algorithm."""
-    __slots__ = ["g", "parent"]
+    def _is_valid_z(self, z: int | None) -> bool:
+        """Check if the height of the successor node is valid."""
+        return z is not None and z - self.z <= 1
 
-    def __init__(self, x: int, y: int, z: int, g: int, parent: "Node" = None):
-        super().__init__(x=x, y=y, z=z)
-        self.g = g
-        self.parent = parent
 
-    def __hash__(self) -> int:
-        return hash(self.xy)
+class DescentStage(TrailStage):
+    """Each discrete location visited during the descent from the best signal point."""
 
-    def __lt__(self, other: "Node") -> bool:
-        return self.g < other.g
-
-    def __repr__(self) -> str:
-        return f"({self.x},{self.y},{self.z}): {self.g}"
-
-    @property
-    def lineage(self) -> list["Node"]:
-        """Provide a list with this node and its recursive parents (if any)."""
-        return [self] + self.parent.lineage if self.parent else []
-
-    @classmethod
-    def from_point(cls, point: Point, g: int, parent: "Node" = None) -> "Node":
-        """Create a new Node from a regular Point."""
-        return cls(x=point.x, y=point.y, z=point.z, g=g, parent=parent)
+    def _is_valid_z(self, z: int | None) -> bool:
+        """Check if the height of the successor node is valid."""
+        return z is not None and self.z - z <= 1
 
 
 class ElvesMaps:
-    """App for computing optimized hiking paths, now without Numpy!."""
+    """App for computing optimized hiking paths, now without Numpy!"""
     def __init__(self, height_map: list[str]):
-        self._z_map = self._get_z_map()
-        self._points = {p.xy: p for p in self._process_heights(heights=height_map)}
+        self._start = self._find_start_location(heights=height_map)
+        self._goal = self._find_goal_location(heights=height_map)
+        self._heights_map = self._process_heights(heights=height_map)
 
     @staticmethod
-    def _get_z_map() -> dict[str, int]:
-        """Return a dictionary mapping string marks to z heights."""
-        z_map = {char: i for i, char in enumerate(ascii_lowercase)}
-        z_map.update({"S": z_map["a"], "E": z_map["z"]})
-        return z_map
+    def _find_start_location(heights: list[str]) -> tuple[int, int]:
+        """Retrieve the XY coordinates of the start position in the hill ascension."""
+        idx = "".join(heights).index("S")
+        return idx % len(heights[0]), idx // len(heights[0])
 
-    def _process_heights(self, heights: list[str]) -> Iterable[Point]:
-        """Transform the provided heights string map into a group of Point objects."""
-        for j, height_row in enumerate(heights):
-            for i, height_str in enumerate(height_row):
-                point = Point(x=i, y=j, z=self._z_map[height_str])
-                if height_str == "S":
-                    self._start = point
-                elif height_str == "E":
-                    self._end = point
-                yield point
+    @staticmethod
+    def _find_goal_location(heights: list[str]) -> tuple[int, int]:
+        """Retrieve the XY coordinates of the target position in the hill ascension."""
+        idx = "".join(heights).index("E")
+        return idx % len(heights[0]), idx // len(heights[0])
+
+    @staticmethod
+    def _process_heights(heights: list[str]) -> dict[tuple[int, int], int]:
+        """Transform the provided heights string map into a group of locations."""
+        level_map = {char: i for i, char in enumerate(ascii_lowercase)}
+        level_map.update({"S": level_map["a"], "E": level_map["z"]})
+        x_range, y_range = range(len(heights[0])), range(len(heights))
+        return {(x, y): level_map[heights[y][x]] for x in x_range for y in y_range}
 
     def build_route_from_start(self) -> list[Node]:
         """Find the shortest node-path from given start to the end using A* search."""
-        start_node = Node.from_point(point=self._start, g=0)
-        heirs_func = self._get_reachable_nodes
-        goal_rule = self._is_goal_node
-        goal_node = self._a_star_search(
-            start=start_node, heirs_func=heirs_func, goal_rule=goal_rule)
+        start = TrailStage(*self._start, n=0, heights_map=self._heights_map, parent=None)
+        goal_node = a_star_search(
+            start=start, goal_func=lambda node: node.xy == self._goal)
         return goal_node.lineage[::-1]
 
     def build_scenic_route(self) -> list[Node]:
         """Find the shortest node-path from any 'a' node to the end using A* search."""
-        start_node = Node.from_point(point=self._end, g=0)
-        heirs_func = self._get_reaching_nodes
-        goal_rule = self._is_low_height_node
-        goal_node = self._a_star_search(
-            start=start_node, heirs_func=heirs_func, goal_rule=goal_rule)
+        target_height = self._heights_map[self._start]
+        start = DescentStage(
+            *self._goal, n=0, heights_map=self._heights_map, parent=None)
+        goal_node = a_star_search(
+            start=start, goal_func=lambda node: node.z == target_height)
         return goal_node.lineage
 
-    def _a_star_search(
-            self, start: Node, heirs_func: Callable, goal_rule: Callable) -> Node:
-        """Use the A* search algorithm to find the best path from start to goal."""
-        # Build lists / queues / min heaps / sets / cost maps:
-        pending_nodes = [start]
-        visited_nodes = set()
-        best_g_costs = {point.xy: 99999 for point in self._points.values()}
-        best_g_costs[start.xy] = start.g
-        # Check each pending node one at a time, from lowest to greatest g cost:
-        while pending_nodes:
-            q_node = heapq.heappop(pending_nodes)
-            # Stop if the goal is reached:
-            if goal_rule(q_node):
-                return q_node
-            if q_node in visited_nodes:
-                continue  # Skip node if its location was already visited.
-            # For each possible neighbour node:
-            for s_node in heirs_func(q_node):
-                if s_node in visited_nodes:
-                    continue  # Skip successor if its location was already visited:
-                if s_node.g >= best_g_costs[s_node.xy]:
-                    continue  # Skip successor if worse than its location's best cost.
-                # Register successor node for future checking:
-                heapq.heappush(pending_nodes, s_node)
-                best_g_costs[s_node.xy] = s_node.g
-            # Register the parent node's location as already seen:
-            visited_nodes.add(q_node)
-        # If code reaches this point, the goal was never reached:
-        raise ValueError("The search could not reach the end Point.")
+    def min_steps_for_ascension_route(self) -> int:
+        """Count the min number of steps for reaching the goal from the start."""
+        stages = self.build_route_from_start()
+        return len(stages) - 1
 
-    def _get_reachable_nodes(self, node: Node) -> Iterable[Node]:
-        """Return every stored node that can be reached by the provided node."""
-        for neighbour in self._get_neighbours(node=node):
-            if neighbour.z - node.z <= 1:
-                yield Node.from_point(point=neighbour, g=node.g + 1, parent=node)
-
-    def _get_reaching_nodes(self, node: Node) -> Iterable[Node]:
-        """Return every stored node that can reach the provided node."""
-        for neighbour in self._get_neighbours(node=node):
-            if node.z - neighbour.z <= 1:
-                yield Node.from_point(point=neighbour, g=node.g + 1, parent=node)
-
-    def _get_neighbours(self, node: Node) -> Iterable[Node]:
-        """Return every Node adjacent to the provided Node."""
-        for dx, dy in [(-1, 0), (0, -1), (1, 0), (0, 1)]:
-            point = self._points.get((node.x + dx, node.y + dy), None)
-            if point is not None:
-                yield point
-
-    def _is_goal_node(self, node: Node) -> bool:
-        """Check if the provided node is the end 'E' node."""
-        return node.xy == self._end.xy
-
-    def _is_low_height_node(self, node: Node) -> bool:
-        """Check if the provided node is an 'a'-height node."""
-        return node.z == self._z_map["a"]
+    def min_steps_for_scenic_route(self) -> int:
+        """Count the min number of steps for reaching the goal from any 'a' location."""
+        stages = self.build_scenic_route()
+        return len(stages) - 1

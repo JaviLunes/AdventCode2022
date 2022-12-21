@@ -14,4 +14,4 @@ def compute_solution() -> tuple[int, int]:
     input_file = Path(__file__).parents[1] / "day_12/puzzle_input.txt"
     lines = read_puzzle_input(input_file=input_file)
     app = ElvesMaps(height_map=lines)
-    return len(app.build_route_from_start()), len(app.build_scenic_route())
+    return app.min_steps_for_ascension_route(), app.min_steps_for_scenic_route()

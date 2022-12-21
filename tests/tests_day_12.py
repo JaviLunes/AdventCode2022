@@ -17,8 +17,8 @@ class ExampleTests(unittest.TestCase):
 
     def test_fewest_steps_from_given_start_to_goal(self):
         """The fewest steps required for reaching the goal from the 'S' start is 31."""
-        self.assertEqual(31, len(self.hill_map.build_route_from_start()))
+        self.assertEqual(31, self.hill_map.min_steps_for_ascension_route())
 
     def test_fewest_steps_from_best_start_to_goal(self):
         """The fewest steps required for reaching the goal from any 'a' start is 29."""
-        self.assertEqual(29, len(self.hill_map.build_scenic_route()))
+        self.assertEqual(29, self.hill_map.min_steps_for_scenic_route())
