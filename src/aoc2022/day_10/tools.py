@@ -2,7 +2,7 @@
 """Tools used for solving the Day 10: Cathode-Ray Tube puzzle."""
 
 # Third party imports:
-from aoc_tools import PixelParser
+from aoc_tools.algorithms.pixel_parsing import PixelParser
 
 
 class CPURegister:
