@@ -13,5 +13,6 @@ def compute_solution() -> tuple[int, int]:
     """Compute the answers for the two parts of this day."""
     input_file = Path(__file__).parents[1] / "day_20/puzzle_input.txt"
     lines = read_puzzle_input(input_file=input_file)
-    file = EncryptedFile(encrypted_strings=lines)
-    return file.groove_sum, None
+    file_1 = EncryptedFile.from_strings(*lines)
+    file_2 = EncryptedFile.from_strings(*lines, key=811589153, passes=10)
+    return file_1.groove_sum, file_2.groove_sum

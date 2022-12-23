@@ -2,22 +2,21 @@
 """Tools used for solving the Day 20: Grove Positioning System puzzle."""
 
 # Standard library imports:
-from typing import Union
+from typing import Any, Union
 
 
-class MixInt:
-    """Wrapper around an integer value that recalls if it has been 'mixed' already."""
-    def __init__(self, value, mixed: bool = False):
+class IndexInt:
+    """Wrapper around an integer value that stores its index in a sequence."""
+    __slots__ = ["value", "index"]
+
+    def __init__(self, value: int, index: int):
         self.value = value
-        self.mixed = mixed
+        self.index = index
 
-    def __eq__(self, other: Union[int, "MixInt"]) -> bool:
-        if isinstance(other, MixInt):
-            return self.value == other.value
+    def __eq__(self, other: Union["IndexInt", int]) -> bool:
+        if isinstance(other, IndexInt):
+            return self.value == other.value and self.index == other.index
         return self.value == other
-
-    def __lt__(self, other: "MixInt") -> bool:
-        return self.value < other.value
 
     def __int__(self) -> int:
         return self.value
@@ -26,61 +25,48 @@ class MixInt:
         return repr(self.value)
 
 
-class MixSeq:
-    """Wrapper around a list of integer values, able to 'mix' them."""
-    def __init__(self, *values: int):
-        self._values = list(map(MixInt, values))
+class CircularList:
+    """Wrapper around a list that allows for moving its items in a circular way."""
+    def __init__(self, *items: Any):
+        self._values = list(items)
+        self._n = len(items)
+
+    def __getitem__(self, index: int) -> Any:
+        return self._values[index]
 
     @property
-    def values(self) -> list[int]:
-        """List the values of the MixInt members of this MixSeq."""
-        return list(map(int, self._values))
+    def values(self) -> list[Any]:
+        """Provide a shallow copy of the internal list of this CircularList."""
+        return [*self._values]
 
-    def mix_values(self, order_seq: list[int]) -> list[int]:
-        """Mix all MixInt members of this MixSeq, processing them as in the order seq."""
-        for value in order_seq:
-            self._mix_value(value=value)
-        return self.values
+    def index(self, item: Any) -> int:
+        """Find the location of an item within the internal list."""
+        return self._values.index(item)
 
-    def _mix_value(self, value: int):
-        """Mix the first non-mixed MixInt member matching the provided value."""
-        index = self._index(value=value)
-        new_index = index + value
-        self._pop(index=index)
-        self._insert(index=new_index, value=value)
-
-    def _index(self, value: int) -> int:
-        """Return the index of the first non-mixed MixInt matching the provided value."""
-        i = 0
-        while i < len(self._values):
-            if self._values[i] == value:
-                if not self._values[i].mixed:
-                    return i
-            i += 1
-        raise ValueError
-
-    def _insert(self, index: int, value: int):
-        """Insert the provided value as a mixed MixInt before the provided index."""
-        index = index % len(self._values)
-        self._values.insert(index, MixInt(value=value, mixed=True))
-
-    def _pop(self, index: int) -> int:
-        """Delete the MixInt member at the provided index, and return its value."""
-        index = index % len(self._values)
-        return self._values.pop(index).value
+    def move(self, index: int, new_index: int):
+        """Remove the item at the given index and insert it at the new index."""
+        index = index % self._n
+        new_index = new_index % (self._n - 1)
+        item = self._values.pop(index)
+        self._values.insert(new_index, item)
 
 
 class EncryptedFile:
     """File containing the encrypted coordinates of the star fruit grove."""
-    def __init__(self, encrypted_strings: list[str]):
-        encrypted_values = list(map(int, encrypted_strings))
-        self.values = self._decrypt_data(encrypted_values=encrypted_values)
+    def __init__(self, *values: int, key: int = 1, passes: int = 1):
+        indexed_values = [IndexInt(value=v * key, index=i) for i, v in enumerate(values)]
+        self.values = self._decrypt(values=indexed_values, passes=passes)
 
     @staticmethod
-    def _decrypt_data(encrypted_values: list[int]):
+    def _decrypt(values: list[IndexInt], passes: int):
         """Apply 'the mixing' once to all numbers in the provided list of values."""
-        mix_seq = MixSeq(*encrypted_values)
-        return mix_seq.mix_values(order_seq=encrypted_values)
+        seq = CircularList(*values)
+        for _ in range(passes):
+            for item in values:
+                original_index = seq.index(item)
+                new_index = original_index + item.value
+                seq.move(index=original_index, new_index=new_index)
+        return seq.values
 
     @property
     def groove_sum(self) -> int:
@@ -94,4 +80,9 @@ class EncryptedFile:
         """Read the ith number after the 0 value in the mixed data sequence."""
         idx_0 = self.values.index(0)
         index = (idx_0 + i) % len(self.values)
-        return self.values[index]
+        return self.values[index].value
+
+    @classmethod
+    def from_strings(cls, *strings: str, key: int = 1, passes: int = 1):
+        """Create a new EncryptedFile from string values, instead of integer values."""
+        return cls(*map(int, strings), key=key, passes=passes)
