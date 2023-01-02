@@ -14,4 +14,4 @@ def compute_solution() -> tuple[int, int]:
     input_file = Path(__file__).parents[1] / "day_18/puzzle_input.txt"
     lines = read_puzzle_input(input_file=input_file)
     droplet = Droplet.from_scan_output(scan_output=lines)
-    return droplet.surface_area, None
+    return droplet.surface_area, droplet.external_surface_area

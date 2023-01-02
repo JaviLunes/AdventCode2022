@@ -18,3 +18,7 @@ class ExampleTests(unittest.TestCase):
     def test_surface_area(self):
         """The surface area of the scanned Droplet is 64."""
         self.assertEqual(64, self.droplet.surface_area)
+
+    def test_external_surface_area(self):
+        """The external surface area of the scanned Droplet is 58."""
+        self.assertEqual(58, self.droplet.external_surface_area)
