@@ -5,7 +5,7 @@
 import unittest
 
 # Local application imports:
-from aoc2022.day_21.tools import MonkeyGang
+from aoc2022.day_21.tools import MonkeyGang, FixedMonkeyGang
 
 
 # noinspection SpellCheckingInspection
@@ -46,3 +46,13 @@ class ExampleTests(unittest.TestCase):
         """This Monkey yells the number 152."""
         gang = MonkeyGang.from_strings(strings=self.monkeys)
         self.assertEqual(152, gang["root"])
+
+    def test_number_of_monkey_root_in_fixed_gang(self):
+        """After fixing the mistranslation, this Monkey yells the number 0."""
+        gang = FixedMonkeyGang.from_strings(strings=self.monkeys)
+        self.assertEqual(0, gang["root"])
+
+    def test_your_number_in_fixed_gang(self):
+        """After fixing the mistranslation, you should yell the number 301."""
+        gang = FixedMonkeyGang.from_strings(strings=self.monkeys)
+        self.assertEqual(301, gang["humn"])
