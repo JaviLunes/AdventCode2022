@@ -13,5 +13,5 @@ def compute_solution() -> tuple[int, int]:
     """Compute the answers for the two parts of this day."""
     input_file = Path(__file__).parents[1] / "day_21/puzzle_input.txt"
     lines = read_puzzle_input(input_file=input_file)
-    gang = MonkeyGang.from_strings(strings=lines, target_monkey_name="root")
+    gang = MonkeyGang.from_strings(strings=lines)
     return gang["root"], None
