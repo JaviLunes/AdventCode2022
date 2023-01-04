@@ -51,6 +51,11 @@ class MonkeyBoard:
         return [(i, tile) for i, tile in stripe if tile != " "]
 
     @property
+    def shape(self) -> tuple[int, int]:
+        """Tuple with the number of rows and columns of this MonkeyBoard."""
+        return len(self.rows), len(self.rows[0])
+
+    @property
     def starting_point(self) -> tuple[int, int]:
         """Row and column coordinates for the leftmost open tile at the topmost row."""
         return 0, self.rows[0].index(".")
@@ -67,8 +72,8 @@ class MonkeyBoard:
 class BoardTraveller:
     """Symbolic figure walking across the MonkeyBoard."""
     def __init__(self, board: "MonkeyBoard", walk_plan: list[str]):
-        self._board = board
-        self._walk_plan = walk_plan
+        self.board = board
+        self.walk_plan = walk_plan
         self.row, self.column = board.starting_point
         self.facing = "→"
 
@@ -77,7 +82,7 @@ class BoardTraveller:
 
     def travel(self):
         """Make this Traveller execute the entire walk plan."""
-        for action in self._walk_plan:
+        for action in self.walk_plan:
             if action.isdecimal():
                 self._move(n_tiles=int(action))
             else:
@@ -86,9 +91,9 @@ class BoardTraveller:
     def _move(self, n_tiles: int):
         """Move a number of tiles (or until hitting a wall) over a Stripe."""
         if self.facing in ["→", "←"]:
-            self.column = self._board.get_new_position(traveller=self, steps=n_tiles)
+            self.column = self.board.get_new_position(traveller=self, steps=n_tiles)
         else:
-            self.row = self._board.get_new_position(traveller=self, steps=n_tiles)
+            self.row = self.board.get_new_position(traveller=self, steps=n_tiles)
 
     def _rotate(self, direction: str):
         """Rotate the current facing 90° clockwise (R) or anti-clockwise (L)."""

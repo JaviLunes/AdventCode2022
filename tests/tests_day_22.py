@@ -4,8 +4,13 @@
 # Standard library imports:
 import unittest
 
+# Third party imports:
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+
 # Local application imports:
 from aoc2022.day_22.tools import BoardTraveller
+from aoc2022.day_22.visualization import plot_board
 
 
 class ExampleTests(unittest.TestCase):
@@ -28,3 +33,10 @@ class ExampleTests(unittest.TestCase):
     def test_final_password(self):
         """The password revealed after completing the travel is 6032."""
         self.assertEqual(6032, self.traveller.pass_code)
+
+    def test_plot_board(self):
+        """Plot the tested MonkeyBoard."""
+        fig = plot_board(board=self.traveller.board)
+        self.assertIsInstance(fig, Figure)
+        fig.show()
+        plt.close(fig)
