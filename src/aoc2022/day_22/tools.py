@@ -23,7 +23,7 @@ class MonkeyBoard:
         stripe = self._filter_off_tiles(stripe=stripe)
         indices, tiles = zip(*stripe)
         steps = min(steps, tiles.index("#") if "#" in tiles else inf)
-        return indices[steps - 1]
+        return indices[(steps - 1) % len(indices)]
 
     def _cut_walk_stripe(self, row: int, col: int, facing: str) -> Stripe:
         """All open, walled and off-map tiles ahead from the given position."""
