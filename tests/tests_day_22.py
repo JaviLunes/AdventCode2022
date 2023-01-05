@@ -2,9 +2,11 @@
 """Tests for the Day 22: Monkey Map puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
 
 # Third party imports:
+from aoc_tools import read_puzzle_input
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
@@ -56,3 +58,16 @@ class ExampleTests(unittest.TestCase):
         self.assertIsInstance(fig, Figure)
         fig.show()
         plt.close(fig)
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_22/puzzle_input.txt"
+        monkey_notes = read_puzzle_input(input_file=input_file)
+        self.traveller = BoardTraveller.from_notes(monkey_notes=monkey_notes)
+
+    def test_final_password(self):
+        """The password revealed after completing the travel is 189140."""
+        self.traveller.travel()
+        self.assertEqual(189140, self.traveller.pass_code)
