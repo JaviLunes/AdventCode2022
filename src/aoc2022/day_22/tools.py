@@ -73,7 +73,7 @@ class BoardTraveller:
         self.board = board
         self.walk_plan = walk_plan
         row, column = board.starting_point
-        self._position = (row, column,  "→")
+        self._positions = [(row, column,  "→")]
 
     def __repr__(self) -> str:
         row, column, facing = self.coordinates
@@ -90,19 +90,24 @@ class BoardTraveller:
     def _move(self, n_tiles: int):
         """Move a number of tiles (or until hitting a wall) over a Stripe."""
         positions = self.board.get_walk_path(traveller=self, steps=n_tiles)
-        self._position = positions[-1]
+        self._positions.extend(positions)
 
     def _rotate(self, direction: str):
         """Rotate the current facing 90° clockwise (R) or anti-clockwise (L)."""
         change = 1 if direction == "R" else -1
         row, column, current_facing = self.coordinates
         new_facing = FACING_ARROWS[(FACING_VALUES[current_facing] + change) % 4]
-        self._position = (row, column, new_facing)
+        self._positions.append((row, column, new_facing))
+
+    @property
+    def all_coordinates(self) -> list[Position]:
+        """List all (row, column, facing) position this Traveller has been at."""
+        return self._positions
 
     @property
     def coordinates(self) -> Position:
         """Provide a tuple with the current row, column and facing of this Traveller."""
-        return self._position
+        return self._positions[-1]
 
     @property
     def pass_code(self) -> int:
