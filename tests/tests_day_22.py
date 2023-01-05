@@ -45,14 +45,14 @@ class ExampleTests(unittest.TestCase):
         fig.show()
         plt.close(fig)
 
-    def test_plot_start_traveller(self):
+    def test_plot_traveller_at_begin(self):
         """Plot the tested BoardTraveller before the start of their walk."""
         fig = plot_traveller(traveller=self.traveller)
         self.assertIsInstance(fig, Figure)
         fig.show()
         plt.close(fig)
 
-    def test_plot_end_traveller(self):
+    def test_plot_traveller_at_end(self):
         """Plot the tested BoardTraveller at the end of their walk."""
         self.traveller.travel()
         fig = plot_traveller(traveller=self.traveller)

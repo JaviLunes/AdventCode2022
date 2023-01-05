@@ -10,7 +10,7 @@ from aoc2022.day_22.tools import BoardTraveller, MonkeyBoard
 
 # Set constants:
 CELL_COLOURS = {"Open": (255, 245, 245), "Traveller": (255, 0, 0),
-                "Wall": (150, 75, 40), "Off-map": (0, 30, 50)}
+                "Trail": (100, 200, 255), "Wall": (150, 75, 40), "Off-map": (0, 30, 50)}
 TILE_NAMES = {" ": "Off-map", ".": "Open", "#": "Wall"}
 
 CellMap = dict[tuple[int, int], CellND]
@@ -31,7 +31,7 @@ def plot_board(board: MonkeyBoard) -> Figure:
 def plot_traveller(traveller: BoardTraveller) -> Figure:
     """Plot the current location of a BoardTraveller at its MonkeyBoard."""
     cells = _build_board_cells(board=traveller.board)
-    cells.update(_build_traveller_cell(traveller=traveller))
+    cells.update(_build_traveller_cells(traveller=traveller))
     plotter = Grid2DPlotter(
         cells=cells.values(), palette=CELL_COLOURS, empty_value="Undefined",
         legend=True, title=False, annotations_kwargs=dict(
@@ -49,7 +49,9 @@ def _build_board_cells(board: MonkeyBoard) -> CellMap:
             for col in range(columns) for row in range(rows)}
 
 
-def _build_traveller_cell(traveller: BoardTraveller) -> CellMap:
-    """Create a special cell holding the location of the traveller in the board."""
-    row, col, facing = traveller.coordinates
-    return {(row, col): CellND(x=col, y=row, value="Traveller", annotation=facing)}
+def _build_traveller_cells(traveller: BoardTraveller) -> CellMap:
+    """Create cells holding the traveller's current and past positions in the board."""
+    current = len(traveller.all_coordinates) - 1
+    return {(row, col): CellND(
+        x=col, y=row, value="Traveller" if i == current else "Trail", annotation=facing)
+        for i, (row, col, facing) in enumerate(traveller.all_coordinates)}
