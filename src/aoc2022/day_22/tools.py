@@ -72,11 +72,12 @@ class BoardTraveller:
     def __init__(self, board: "MonkeyBoard", walk_plan: list[str]):
         self.board = board
         self.walk_plan = walk_plan
-        self.row, self.column = board.starting_point
-        self.facing = "→"
+        row, column = board.starting_point
+        self._position = (row, column,  "→")
 
     def __repr__(self) -> str:
-        return f"({self.row},{self.column}) {self.facing}"
+        row, column, facing = self.coordinates
+        return f"({row},{column}) {facing}"
 
     def travel(self):
         """Make this Traveller execute the entire walk plan."""
@@ -89,26 +90,25 @@ class BoardTraveller:
     def _move(self, n_tiles: int):
         """Move a number of tiles (or until hitting a wall) over a Stripe."""
         positions = self.board.get_walk_path(traveller=self, steps=n_tiles)
-        if self.facing in ["→", "←"]:
-            self.column = positions[-1][1]
-        else:
-            self.row = positions[-1][0]
+        self._position = positions[-1]
 
     def _rotate(self, direction: str):
         """Rotate the current facing 90° clockwise (R) or anti-clockwise (L)."""
         change = 1 if direction == "R" else -1
-        new_facing_value = (FACING_VALUES[self.facing] + change) % 4
-        self.facing = FACING_ARROWS[new_facing_value]
+        row, column, current_facing = self.coordinates
+        new_facing = FACING_ARROWS[(FACING_VALUES[current_facing] + change) % 4]
+        self._position = (row, column, new_facing)
 
     @property
     def coordinates(self) -> Position:
         """Provide a tuple with the current row, column and facing of this Traveller."""
-        return self.row, self.column, self.facing
+        return self._position
 
     @property
     def pass_code(self) -> int:
         """Compose a numeric password from the current row, column and facing."""
-        return (self.row + 1) * 1000 + (self.column + 1) * 4 + FACING_VALUES[self.facing]
+        row, column, facing = self.coordinates
+        return (row + 1) * 1000 + (column + 1) * 4 + FACING_VALUES[facing]
 
     @classmethod
     def from_notes(cls, monkey_notes: list[str]) -> "BoardTraveller":

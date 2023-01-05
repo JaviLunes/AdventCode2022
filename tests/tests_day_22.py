@@ -28,9 +28,10 @@ class ExampleTests(unittest.TestCase):
     def test_final_position(self):
         """Your row, column and facing after completing the travel are 6, 8, 0."""
         self.traveller.travel()
-        self.assertEqual(6, self.traveller.row + 1)
-        self.assertEqual(8, self.traveller.column + 1)
-        self.assertEqual("→", self.traveller.facing)
+        row, column, facing = self.traveller.coordinates
+        self.assertEqual(6, row + 1)
+        self.assertEqual(8, column + 1)
+        self.assertEqual("→", facing)
 
     def test_final_password(self):
         """The password revealed after completing the travel is 6032."""
