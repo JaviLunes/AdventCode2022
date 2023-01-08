@@ -11,22 +11,24 @@ VALUE_ARROWS = {v: k for k, v in ARROW_VALUES.items()}
 # Define type aliases:
 Tile = tuple[int, int]
 TilePair = list[tuple[Tile, Tile]]
-Position = tuple[int, int, str]
-Stripe = list[tuple[Position, str]]
 
 
 class Traveller:
     """Symbolic figure walking across one Board."""
     def __init__(self, row: int, column: int, facing: str):
         self._positions = [(row, column, facing)]
+        self.steps_to_walk = 0
 
     def __repr__(self) -> str:
         row, column, facing = self.position
+        if self.steps_to_walk:
+            return f"({row},{column}) {facing} [{self.steps_to_walk} steps remain]"
         return f"({row},{column}) {facing}"
 
-    def move(self, walked_positions: list[Position]):
+    def move(self, walked_positions: list[tuple[int, int, str]]):
         """Register new positions this Traveller has walked over."""
         self._positions.extend(walked_positions)
+        self.steps_to_walk -= len(walked_positions)
 
     def rotate(self, direction: str):
         """Rotate the current facing 90° clockwise (R) or anti-clockwise (L)."""
@@ -36,12 +38,12 @@ class Traveller:
         self._positions.append((row, column, new_facing))
 
     @property
-    def all_positions(self) -> list[Position]:
+    def all_positions(self) -> list[tuple[int, int, str]]:
         """List all (row, column, facing) position this Traveller has been at."""
         return self._positions
 
     @property
-    def position(self) -> Position:
+    def position(self) -> tuple[int, int, str]:
         """Provide a tuple with the current row, column and facing of this Traveller."""
         return self._positions[-1]
 
@@ -79,8 +81,8 @@ class Edge:
     def __repr__(self) -> str:
         return f"{self._area_1} {self._arrow} {self._area_2}"
 
-    def warp_over(self, position: Position) -> Position:
-        """For a known Position, return its corresponding warp Position."""
+    def warp_over(self, position: tuple[int, int, str]) -> tuple[int, int, str]:
+        """For a known row, column and facing, return its corresponding warp position."""
         row, col, facing = position
         if facing not in [self._arrow, ARROW_INVERSES[self._arrow]]:
             raise WarpError(position=position)
@@ -94,7 +96,7 @@ class Edge:
 
 class WarpError(KeyError):
     """Raised when warping over an Edge an unregistered position."""
-    def __init__(self, position: Position):
+    def __init__(self, position: tuple[int, int, str]):
         self.position = position
 
     def __str__(self) -> str:
@@ -103,47 +105,44 @@ class WarpError(KeyError):
 
 class Area:
     """Each of 6 regular nxn subdomains in which a board can be decomposed."""
-    def __init__(self, tile_rows: list[str], area_row: int, area_col: int):
-        self._size = len(tile_rows)
+    def __init__(self, rows: list[str], area_row: int, area_col: int):
+        self._size = len(rows)
         self._area_row, self._area_col = area_row, area_col
-        top_row, left_col = area_row * self._size, area_col * self._size
-        self._tiles_map = self._build_map(
-            tile_rows=tile_rows, top_row=top_row, left_col=left_col)
         self._register_borders()
+        self._map = self._build_map(tile_rows=rows)
         self.edges = {k: None for k in ARROWS}
 
-    def _build_map(self, tile_rows: list[str], top_row: int, left_col: int) \
-            -> dict[Tile, str]:
+    def _build_map(self, tile_rows: list[str]) -> dict[Tile, str]:
         """Map the row and column of each provided tile to its value."""
-        return {(top_row + (i // self._size), left_col + (i % self._size)): value
+        return {(self._top + (i // self._size), self._left + (i % self._size)): value
                 for i, value in enumerate("".join(tile_rows))}
 
     def _register_borders(self):
         """Store the top|bottom rows and the left|right columns on this Area."""
-        self._top = min(r for r, c in self._tiles_map.keys())
-        self._bottom = max(r for r, c in self._tiles_map.keys())
-        self._left = min(c for r, c in self._tiles_map.keys())
-        self._right = max(c for r, c in self._tiles_map.keys())
+        self._top = self._area_row * self._size
+        self._bottom = self._top + self._size - 1
+        self._left = self._area_col * self._size
+        self._right = self._left + self._size - 1
 
     def __contains__(self, tile: Tile) -> bool:
-        return tile in self._tiles_map.keys()
+        return tile in self._map.keys()
 
     def __getitem__(self, tile: Tile) -> str:
-        return self._tiles_map[tile]
+        return self._map[tile]
 
     def __repr__(self) -> str:
-        return f"{self.area_tile}: {list(self._tiles_map.values())}"
+        return f"{self.area_tile}: {list(self._map.values())}"
 
     def get_border_tiles(self, side: str) -> list[Tile]:
         """List all tiles in this Area at its target side."""
         if side == "→":
-            return [tile for tile in self._tiles_map.keys() if tile[1] == self.right]
+            return [tile for tile in self._map.keys() if tile[1] == self.right]
         if side == "↓":
-            return [tile for tile in self._tiles_map.keys() if tile[0] == self.bottom]
+            return [tile for tile in self._map.keys() if tile[0] == self.bottom]
         if side == "←":
-            return [tile for tile in self._tiles_map.keys() if tile[1] == self.left]
+            return [tile for tile in self._map.keys() if tile[1] == self.left]
         if side == "↑":
-            return [tile for tile in self._tiles_map.keys() if tile[0] == self.top]
+            return [tile for tile in self._map.keys() if tile[0] == self.top]
         raise ValueError(f"Unknown '{side}' side.")
 
     def register_edge(self, side: str, edge: Edge):
@@ -151,25 +150,28 @@ class Area:
         assert side in ARROWS
         self.edges.update({side: edge})
 
-    def walk_over(self, start: Position, n_steps: int) -> tuple[list[Position], int]:
-        """From a start Position, walk a straight line until a wall or an Area edge."""
-        row, col, facing = start
+    def walk_over(self, traveller: Traveller):
+        """Walk a straight line until the Traveller hits a wall or reaches an Edge."""
+        row, col, facing = traveller.position
         d_row, d_col = ARROW_DELTAS[facing]
-        walked_positions = []
-        steps_to_edge = self._get_steps_to_edge(position=start)
-        while n_steps:
-            if len(walked_positions) == steps_to_edge:
-                break  # About to warp over an Edge.
-            n_steps -= 1
+        walked_tiles, walked_into_wall = [], False
+        steps_to_edge = self._get_steps_to_edge(traveller=traveller)
+        while len(walked_tiles) < traveller.steps_to_walk:
+            if len(walked_tiles) == steps_to_edge:  # About to warp over an Edge.
+                break
             row, col = row + d_row, col + d_col
-            if self[(row, col)] == "#":
-                return walked_positions, 0  # Facing a wall, no more walk to do.
-            walked_positions.append((row, col, facing))
-        return walked_positions, n_steps
+            if self[(row, col)] == "#":  # Facing a wall, no more walk to do.
+                walked_into_wall = True
+                break
+            walked_tiles.append((row, col))
+        walked_positions = [(row, col, facing) for row, col in walked_tiles]
+        traveller.move(walked_positions=walked_positions)
+        if walked_into_wall:
+            traveller.steps_to_walk = 0
 
-    def _get_steps_to_edge(self, position: Position) -> int:
-        """Get max line steps to the edge of this Area from the given Position."""
-        row, col, facing = position
+    def _get_steps_to_edge(self, traveller: Traveller) -> int:
+        """Get the max steps from the Traveller to the faced edge of this Area."""
+        row, col, facing = traveller.position
         if facing == "↓":
             return self.bottom - row
         if facing == "↑":
@@ -207,12 +209,12 @@ class Area:
     @property
     def tiles(self) -> list[tuple[Tile, str]]:
         """Row and column tuple, and value, of each tile in this Area."""
-        return [((r, c), v) for (r, c), v in self._tiles_map.items()]
+        return [((r, c), v) for (r, c), v in self._map.items()]
 
     @property
     def is_void(self) -> bool:
         """Check if all tiles in this Area are off-map tiles."""
-        return all(tile == " " for tile in self._tiles_map.values())
+        return all(tile == " " for tile in self._map.values())
 
     @property
     def missing_edges(self) -> list[str]:
@@ -222,29 +224,29 @@ class Area:
 
 class Board:
     """Strangely-shaped board of open, walled and off-limits 2D tiles."""
-    def __init__(self, board_rows: list[str], area_size: int):
+    def __init__(self, rows: list[str], area_size: int):
+        self._sizes = len(rows) // area_size, len(rows[0]) // area_size
         self._area_size = area_size
-        self._areas_map = self._build_areas(rows=board_rows)
         self._register_borders()
+        self._map = self._build_areas(rows=rows)
         self._register_edges()
 
     def _build_areas(self, rows: list[str]) -> dict[Tile, "Area"]:
         """Assign each tile in this Board to one Area."""
         areas, size = {}, self._area_size
-        for r in range(len(rows) // size):
+        for r in range(self._sizes[0]):
             area_rows = rows[r * size:(r + 1) * size]
-            for c in range(len(rows[0]) // size):
+            for c in range(self._sizes[1]):
                 area_tiles = [row[c * size: (c + 1) * size] for row in area_rows]
-                area = Area(tile_rows=area_tiles, area_row=r, area_col=c)
-                areas.update({(r, c): area})
+                areas.update({(r, c): Area(rows=area_tiles, area_row=r, area_col=c)})
         return areas
 
     def _register_borders(self):
         """Store the top|bottom rows and the left|right columns on this Area."""
-        self._top = min(r for r, c in self._areas_map.keys())
-        self._bottom = max(r for r, c in self._areas_map.keys())
-        self._left = min(c for r, c in self._areas_map.keys())
-        self._right = max(c for r, c in self._areas_map.keys())
+        self._top = 0
+        self._bottom = self._sizes[0] - 1
+        self._left = 0
+        self._right = self._sizes[1] - 1
 
     def _register_edges(self):
         """Register the Edge at the border of each stored Area with the rest of areas."""
@@ -269,7 +271,7 @@ class Board:
 
     def __getitem__(self, area_tile: Tile) -> Area:
         row, col = self._adjust_tile(tile=area_tile)
-        return self._areas_map[(row, col)]
+        return self._map[(row, col)]
 
     def _adjust_tile(self, tile: Tile) -> Tile:
         """Allow the Board area map to behave as a 2D cyclic map of tiles."""
@@ -286,34 +288,30 @@ class Board:
 
     def spawn_traveller(self) -> "Traveller":
         """Create a new Traveller at the starting tile."""
-        area = next(filter(lambda a: not a.is_void, self._areas_map.values()))
+        area = next(filter(lambda a: not a.is_void, self._map.values()))
         return Traveller(row=area.top, column=area.left, facing="→")
 
-    def simulate_walk(self, start: Position, n_steps: int) -> list[Position]:
-        """New positions crossed when walking a straight line from a starting point."""
-        row, col, facing = start
+    def walk_over(self, traveller: Traveller):
+        """Move the Traveller a straight line until it has no more steps to walk."""
+        row, col, facing = traveller.position
         current_area, total_walked = self._get_current_area(tile=(row, col)), []
-        while n_steps:
-            area_walked, n_steps = current_area.walk_over(
-                start=(row, col, facing), n_steps=n_steps)
-            total_walked.extend(area_walked)
+        while traveller.steps_to_walk:
+            current_area.walk_over(traveller=traveller)
             # If after walking an Area, any steps remain, an Edge must be reached.
-            if n_steps and n_steps > 0:
-                n_steps -= 1
-                row, col, facing = total_walked[-1] if total_walked else start
+            if traveller.steps_to_walk:
+                row, col, facing = traveller.position
                 edge = current_area.edges[facing]
                 try:
                     row, col, facing = edge.warp_over(position=(row, col, facing))
                 except WarpError:  # Tried to warp onto a wall (or something went wrong).
-                    return total_walked
+                    break
                 else:
+                    traveller.move(walked_positions=[(row, col, facing)])
                     current_area = self._get_current_area(tile=(row, col))
-                    total_walked.append((row, col, facing))
-        return total_walked
 
     def _get_current_area(self, tile: Tile) -> Area:
         """Find the Area containing the provided tile location."""
-        for area in self._areas_map.values():
+        for area in self._map.values():
             if tile in area:
                 return area
         raise KeyError(f"The {tile} tile doesn't belong to any known Area.")
@@ -321,7 +319,7 @@ class Board:
     @property
     def areas(self) -> list[Area]:
         """List the areas of this Board."""
-        return list(self._areas_map.values())
+        return list(self._map.values())
 
     @property
     def top(self) -> int:
@@ -349,7 +347,7 @@ class Board:
         board_notes = monkey_notes[:-2]
         m, n = len(board_notes), max(len(line) for line in board_notes)
         board_rows = [row + " " * (n - len(row)) for row in board_notes]
-        return cls(board_rows=board_rows, area_size=area_size)
+        return cls(rows=board_rows, area_size=area_size)
 
 
 class WalkPlan:
@@ -361,9 +359,8 @@ class WalkPlan:
         """Make a Traveller do each action in this WalkPlan sequentially."""
         for stage in self.stages:
             if stage.isdecimal():
-                walked_positions = board.simulate_walk(
-                    start=traveller.position, n_steps=int(stage))
-                traveller.move(walked_positions=walked_positions)
+                traveller.steps_to_walk = int(stage)
+                board.walk_over(traveller=traveller)
             else:
                 traveller.rotate(direction=stage)
 
