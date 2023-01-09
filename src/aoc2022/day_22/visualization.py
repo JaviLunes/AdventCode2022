@@ -59,6 +59,6 @@ def _build_board_cells(board: Board) -> dict[tuple[int, int], CellND]:
 def _build_traveller_cells(traveller: Traveller) -> dict[tuple[int, int], CellND]:
     """Create cells holding the traveller's current and past positions in the board."""
     current = len(traveller.all_positions) - 1
-    return {(row, col): CellND(
-        x=col, y=row, value="Traveller" if i == current else "Trail", annotation=facing)
-        for i, (row, col, facing) in enumerate(traveller.all_positions)}
+    return {(row, col): CellND(x=col, y=row, annotation=str(facing),
+                               value="Traveller" if i == current else "Trail")
+            for i, (row, col, facing) in enumerate(traveller.all_positions)}

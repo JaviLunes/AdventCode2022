@@ -1,21 +1,59 @@
 # coding=utf-8
 """Tools used for solving the Day 22: Monkey Map puzzle."""
 
-# Set constants:
-ARROWS = ["→", "↓", "←", "↑"]
-ARROW_INVERSES = {"→": "←", "↓": "↑", "←": "→", "↑": "↓"}
-ARROW_DELTAS = {"→": (0, 1), "←": (0, -1), "↓": (1, 0), "↑": (-1, 0)}
-ARROW_VALUES = {"→": 0, "↓": 1, "←": 2, "↑": 3}
-VALUE_ARROWS = {v: k for k, v in ARROW_VALUES.items()}
+# Standard library imports:
+from enum import Enum
 
 # Define type aliases:
 Tile = tuple[int, int]
 TilePair = list[tuple[Tile, Tile]]
 
 
+class Arrow(Enum):
+    """Linear movement in an orthogonal direction."""
+    RIGHT = "→", (0, 1)
+    DOWN = "↓", (1, 0)
+    LEFT = "←", (0, -1)
+    UP = "↑", (-1, 0)
+
+    def __new__(cls, arrow: str, deltas: tuple[int, int]) -> "Arrow":
+        order = len(cls.__members__)
+        obj = object.__new__(cls)
+        obj._value_ = order
+        obj._arrow = arrow
+        obj._order = order
+        obj._deltas = deltas
+        return obj
+
+    def __repr__(self) -> str:
+        return self._arrow
+
+    def __str__(self) -> str:
+        return self._arrow
+        
+    def rotate(self, clockwise: bool) -> "Arrow":
+        """Get the next (clockwise) or previous (anti-clockwise) defined Arrow."""
+        return Arrow((self._order + (1 if clockwise else -1)) % len(Arrow))
+
+    @property
+    def code(self) -> int:
+        """Value assigned to this Arrow for pass-code-computing purposes."""
+        return self._order
+
+    @property
+    def deltas(self) -> tuple[int, int]:
+        """Row and column changes of a one-tile movement in this Arrow's direction."""
+        return self._deltas
+
+    @property
+    def inverse(self) -> "Arrow":
+        """Arrow pointing in the opposite direction of this Arrow."""
+        return Arrow((self._order + 2) % len(Arrow))
+
+
 class Traveller:
     """Symbolic figure walking across one Board."""
-    def __init__(self, row: int, column: int, facing: str):
+    def __init__(self, row: int, column: int, facing: Arrow):
         self._positions = [(row, column, facing)]
         self.steps_to_walk = 0
 
@@ -25,25 +63,24 @@ class Traveller:
             return f"({row},{column}) {facing} [{self.steps_to_walk} steps remain]"
         return f"({row},{column}) {facing}"
 
-    def move(self, walked_positions: list[tuple[int, int, str]]):
+    def move(self, walked_positions: list[tuple[int, int, Arrow]]):
         """Register new positions this Traveller has walked over."""
         self._positions.extend(walked_positions)
         self.steps_to_walk -= len(walked_positions)
 
     def rotate(self, direction: str):
         """Rotate the current facing 90° clockwise (R) or anti-clockwise (L)."""
-        change = 1 if direction == "R" else -1
         row, column, current_facing = self.position
-        new_facing = VALUE_ARROWS[(ARROW_VALUES[current_facing] + change) % 4]
+        new_facing = current_facing.rotate(clockwise=direction == "R")
         self._positions.append((row, column, new_facing))
 
     @property
-    def all_positions(self) -> list[tuple[int, int, str]]:
+    def all_positions(self) -> list[tuple[int, int, Arrow]]:
         """List all (row, column, facing) position this Traveller has been at."""
         return self._positions
 
     @property
-    def position(self) -> tuple[int, int, str]:
+    def position(self) -> tuple[int, int, Arrow]:
         """Provide a tuple with the current row, column and facing of this Traveller."""
         return self._positions[-1]
 
@@ -51,14 +88,14 @@ class Traveller:
     def pass_code(self) -> int:
         """Compose a numeric password from the current row, column and facing."""
         row, column, facing = self.position
-        return (row + 1) * 1000 + (column + 1) * 4 + ARROW_VALUES[facing]
+        return (row + 1) * 1000 + (column + 1) * 4 + facing.code
 
 
 class Edge:
     """Line separating adjacent tiles belonging in different areas of a board."""
     __slots__ = ["_map_12", "_map_21", "_area_1", "_area_2", "_arrow"]
 
-    def __init__(self, area_1: "Area", area_2: "Area", direction_12: str):
+    def __init__(self, area_1: "Area", area_2: "Area", direction_12: Arrow):
         self._area_1, self._area_2 = area_1.area_tile, area_2.area_tile
         self._arrow = direction_12
         paired_tiles = self._pair_borders(area_1=area_1, area_2=area_2)
@@ -69,7 +106,7 @@ class Edge:
     def _pair_borders(self, area_1: "Area", area_2: "Area") -> TilePair:
         """Zip pairs of tiles across the shared border of the two areas."""
         border_1 = area_1.get_border_tiles(side=self._arrow)
-        border_2 = area_2.get_border_tiles(side=ARROW_INVERSES[self._arrow])
+        border_2 = area_2.get_border_tiles(side=self._arrow.inverse)
         return [(tile_1, tile_2) for tile_1, tile_2 in zip(border_1, border_2)]
 
     @staticmethod
@@ -81,10 +118,10 @@ class Edge:
     def __repr__(self) -> str:
         return f"{self._area_1} {self._arrow} {self._area_2}"
 
-    def warp_over(self, position: tuple[int, int, str]) -> tuple[int, int, str]:
+    def warp_over(self, position: tuple[int, int, Arrow]) -> tuple[int, int, Arrow]:
         """For a known row, column and facing, return its corresponding warp position."""
         row, col, facing = position
-        if facing not in [self._arrow, ARROW_INVERSES[self._arrow]]:
+        if facing not in [self._arrow, self._arrow.inverse]:
             raise WarpError(position=position)
         warp_map = self._map_12 if facing == self._arrow else self._map_21
         try:
@@ -96,7 +133,7 @@ class Edge:
 
 class WarpError(KeyError):
     """Raised when warping over an Edge an unregistered position."""
-    def __init__(self, position: tuple[int, int, str]):
+    def __init__(self, position: tuple[int, int, Arrow]):
         self.position = position
 
     def __str__(self) -> str:
@@ -110,7 +147,7 @@ class Area:
         self._area_row, self._area_col = area_row, area_col
         self._register_borders()
         self._map = self._build_map(tile_rows=rows)
-        self.edges = {k: None for k in ARROWS}
+        self.edges = {direction: None for direction in Arrow}
 
     def _build_map(self, tile_rows: list[str]) -> dict[Tile, str]:
         """Map the row and column of each provided tile to its value."""
@@ -133,27 +170,26 @@ class Area:
     def __repr__(self) -> str:
         return f"{self.area_tile}: {list(self._map.values())}"
 
-    def get_border_tiles(self, side: str) -> list[Tile]:
+    def get_border_tiles(self, side: Arrow) -> list[Tile]:
         """List all tiles in this Area at its target side."""
-        if side == "→":
+        if side is Arrow.RIGHT:
             return [tile for tile in self._map.keys() if tile[1] == self.right]
-        if side == "↓":
+        if side is Arrow.DOWN:
             return [tile for tile in self._map.keys() if tile[0] == self.bottom]
-        if side == "←":
+        if side is Arrow.LEFT:
             return [tile for tile in self._map.keys() if tile[1] == self.left]
-        if side == "↑":
+        if side is Arrow.UP:
             return [tile for tile in self._map.keys() if tile[0] == self.top]
         raise ValueError(f"Unknown '{side}' side.")
 
-    def register_edge(self, side: str, edge: Edge):
+    def register_edge(self, side: Arrow, edge: Edge):
         """Store the provided Edge at the given side of this Area."""
-        assert side in ARROWS
         self.edges.update({side: edge})
 
     def walk_over(self, traveller: Traveller):
         """Walk a straight line until the Traveller hits a wall or reaches an Edge."""
         row, col, facing = traveller.position
-        d_row, d_col = ARROW_DELTAS[facing]
+        d_row, d_col = facing.deltas
         walked_tiles, walked_into_wall = [], False
         steps_to_edge = self._get_steps_to_edge(traveller=traveller)
         while len(walked_tiles) < traveller.steps_to_walk:
@@ -172,14 +208,15 @@ class Area:
     def _get_steps_to_edge(self, traveller: Traveller) -> int:
         """Get the max steps from the Traveller to the faced edge of this Area."""
         row, col, facing = traveller.position
-        if facing == "↓":
-            return self.bottom - row
-        if facing == "↑":
-            return row - self.top
-        if facing == "→":
+        if facing is Arrow.RIGHT:
             return self.right - col
-        if facing == "←":
+        if facing is Arrow.DOWN:
+            return self.bottom - row
+        if facing is Arrow.LEFT:
             return col - self.left
+        if facing is Arrow.UP:
+            return row - self.top
+        raise ValueError(f"Unknown '{facing}' facing.")
 
     @property
     def top(self) -> int:
@@ -217,7 +254,7 @@ class Area:
         return all(tile == " " for tile in self._map.values())
 
     @property
-    def missing_edges(self) -> list[str]:
+    def missing_edges(self) -> list[Arrow]:
         """List those sides of this Area without a defined Edge."""
         return [side for side, edge in self.edges.items() if edge is None]
 
@@ -259,11 +296,10 @@ class Board:
                 edge = Edge(area_1=area, area_2=area_side, direction_12=side)
                 area.register_edge(side=side, edge=edge)
 
-    def _get_adjacent_area(self, area: Area, side: str) -> Area:
+    def _get_adjacent_area(self, area: Area, side: Arrow) -> Area:
         """Get the first non-void Area located at the given side of the target Area."""
         area_row, area_col = area.area_tile
-        d_row, d_col = ARROW_DELTAS[side]
-        area_row, area_col = area_row + d_row, area_col + d_col
+        area_row, area_col = area_row + side.deltas[0], area_col + side.deltas[1]
         side_area = self[(area_row, area_col)]
         if side_area.is_void:
             return self._get_adjacent_area(area=side_area, side=side)
@@ -289,7 +325,7 @@ class Board:
     def spawn_traveller(self) -> "Traveller":
         """Create a new Traveller at the starting tile."""
         area = next(filter(lambda a: not a.is_void, self._map.values()))
-        return Traveller(row=area.top, column=area.left, facing="→")
+        return Traveller(row=area.top, column=area.left, facing=Arrow.RIGHT)
 
     def walk_over(self, traveller: Traveller):
         """Move the Traveller a straight line until it has no more steps to walk."""

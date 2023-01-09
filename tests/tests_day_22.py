@@ -32,7 +32,7 @@ class ExampleTests(unittest.TestCase):
         self.walk_plan.execute_plan(traveller=traveller, board=self.board)
         self.assertEqual(6, traveller.position[0] + 1)
         self.assertEqual(8, traveller.position[1] + 1)
-        self.assertEqual("→", traveller.position[2])
+        self.assertEqual("→", str(traveller.position[2]))
 
     def test_final_password(self):
         """The password revealed after completing the travel is 6032."""
@@ -47,16 +47,8 @@ class ExampleTests(unittest.TestCase):
         fig.show()
         plt.close(fig)
 
-    def test_plot_traveller_at_begin(self):
-        """Plot the tested BoardTraveller before the start of their walk."""
-        traveller = self.board.spawn_traveller()
-        fig = plot_traveller(traveller=traveller, board=self.board)
-        self.assertIsInstance(fig, Figure)
-        fig.show()
-        plt.close(fig)
-
-    def test_plot_traveller_at_end(self):
-        """Plot the tested BoardTraveller at the end of their walk."""
+    def test_plot_travel(self):
+        """Plot the tested Traveller at the end of their walk."""
         traveller = self.board.spawn_traveller()
         self.walk_plan.execute_plan(traveller=traveller, board=self.board)
         fig = plot_traveller(traveller=traveller, board=self.board)
