@@ -6,6 +6,7 @@ from enum import Enum
 
 # Define type aliases:
 TileLoc = tuple[int, int]
+Tile = tuple[int, int, str]
 TileLocPair = list[tuple[TileLoc, TileLoc]]
 
 
@@ -50,6 +51,14 @@ class Arrow(Enum):
         """Arrow pointing in the opposite direction of this Arrow."""
         return Arrow((self._order + 2) % len(Arrow))
 
+    @classmethod
+    def from_deltas(cls, deltas: tuple[int, int]) -> "Arrow":
+        """Find the Arrow with row and column deltas matching the provided ones."""
+        for arrow in cls:
+            if arrow._deltas == deltas:
+                return arrow
+        raise ValueError(f"No Arrow has the provided {deltas} deltas.")
+
 
 class Traveller:
     """Symbolic figure walking across one Board."""
@@ -93,43 +102,36 @@ class Traveller:
 
 class Edge:
     """Line separating adjacent tiles belonging in different areas of a board."""
-    __slots__ = ["_map_12", "_map_21", "_area_1", "_area_2", "_arrow"]
+    __slots__ = ["_map", "_area_in", "_area_out", "_arrow_in", "_arrow_out"]
 
-    def __init__(self, area_1: "Area", area_2: "Area", direction_12: Arrow):
-        self._area_1, self._area_2 = area_1, area_2
-        self._arrow = direction_12
+    def __init__(self, in_area: "Area", out_area: "Area", in_arrow: Arrow,
+                 out_arrow: Arrow):
+        self._area_in, self._area_out = in_area, out_area
+        self._arrow_in, self._arrow_out = in_arrow, out_arrow
         paired_tiles = self._pair_borders()
-        open_tiles = self._filter_walls(tiles=paired_tiles)
-        self._map_12 = {t1: t2 for t1, t2 in open_tiles}
-        self._map_21 = {t2: t1 for t1, t2 in open_tiles}
+        self._map = {tl1: tl2 for tl1, tl2 in paired_tiles}
 
     def _pair_borders(self) -> TileLocPair:
         """Zip pairs of tiles across the shared border of the two areas."""
-        border_1 = self._area_1.get_border_tiles(side=self._arrow)
-        border_2 = self._area_2.get_border_tiles(side=self._arrow.inverse)
-        return [(tile_1, tile_2) for tile_1, tile_2 in zip(border_1, border_2)]
-
-    def _filter_walls(self, tiles: TileLocPair) -> TileLocPair:
-        """Remove tile pairs where one or both tiles are walls."""
-        return list(filter(
-            lambda tp: self._area_1[tp[0]] != "#" and self._area_2[tp[1]] != "#", tiles))
+        border_1 = self._area_in.get_border_tiles(side=self._arrow_in)
+        border_2 = self._area_out.get_border_tiles(side=self._arrow_in.inverse)
+        return [((r1, c1), (r2, c2)) for (r1, c1, v1), (r2, c2, v2)
+                in zip(border_1, border_2) if v1 != "#" and v2 != "#"]
 
     def __repr__(self) -> str:
-        return f"{self._area_1.area_tile} {self._arrow} {self._area_2.area_tile}"
+        return f"{self._area_in.area_tile} {self._arrow_in} {self._area_out.area_tile}"
 
     def warp_over(self, traveller: Traveller) -> "Area":
         """For a known row, column and facing, return its corresponding warp position."""
         row, col, facing = traveller.position
-        if facing not in [self._arrow, self._arrow.inverse]:
+        if facing != self._arrow_in:
             raise WarpError(traveller=traveller)
-        warp_map = self._map_12 if facing == self._arrow else self._map_21
-        new_area = self._area_2 if facing == self._arrow else self._area_2
         try:
-            row, col = warp_map[(row, col)]
+            row, col = self._map[(row, col)]
         except KeyError:
             raise WarpError(traveller=traveller)
-        traveller.move(walked_positions=[(row, col, facing)])
-        return new_area
+        traveller.move(walked_positions=[(row, col, self._arrow_out)])
+        return self._area_out
 
 
 class WarpError(KeyError):
@@ -171,16 +173,16 @@ class Area:
     def __repr__(self) -> str:
         return f"{self.area_tile}: {list(self._map.values())}"
 
-    def get_border_tiles(self, side: Arrow) -> list[TileLoc]:
+    def get_border_tiles(self, side: Arrow) -> list[Tile]:
         """List all tiles in this Area at its target side."""
         if side is Arrow.RIGHT:
-            return [tile for tile in self._map.keys() if tile[1] == self._right]
+            return [(r, c, v) for (r, c), v in self._map.items() if c == self._right]
         if side is Arrow.DOWN:
-            return [tile for tile in self._map.keys() if tile[0] == self._bottom]
+            return [(r, c, v) for (r, c), v in self._map.items() if r == self._bottom]
         if side is Arrow.LEFT:
-            return [tile for tile in self._map.keys() if tile[1] == self._left]
+            return [(r, c, v) for (r, c), v in self._map.items() if c == self._left]
         if side is Arrow.UP:
-            return [tile for tile in self._map.keys() if tile[0] == self._top]
+            return [(r, c, v) for (r, c), v in self._map.items() if r == self._top]
         raise ValueError(f"Unknown '{side}' side.")
 
     def register_edge(self, side: Arrow, edge: Edge):
@@ -256,11 +258,11 @@ class Board:
         self._sizes = len(rows) // area_size, len(rows[0]) // area_size
         self._area_size = area_size
         self._register_borders()
-        self._map = self._build_areas(rows=rows)
+        self._register_areas(rows=rows)
         self._register_edges()
         self._current_area = None
 
-    def _build_areas(self, rows: list[str]) -> dict[TileLoc, "Area"]:
+    def _register_areas(self, rows: list[str]):
         """Assign each tile in this Board to one Area."""
         areas, size = {}, self._area_size
         for r in range(self._sizes[0]):
@@ -268,7 +270,7 @@ class Board:
             for c in range(self._sizes[1]):
                 area_tiles = [row[c * size: (c + 1) * size] for row in area_rows]
                 areas.update({(r, c): Area(rows=area_tiles, area_row=r, area_col=c)})
-        return areas
+        self._map = areas
 
     def _register_borders(self):
         """Store the top|bottom rows and the left|right columns on this Area."""
@@ -283,7 +285,8 @@ class Board:
             while area.missing_edges:
                 side = area.missing_edges.pop(0)
                 area_side = self._get_adjacent_area(area=area, side=side)
-                edge = Edge(area_1=area, area_2=area_side, direction_12=side)
+                edge = Edge(
+                    in_area=area, out_area=area_side, in_arrow=side, out_arrow=side)
                 area.register_edge(side=side, edge=edge)
 
     def _get_adjacent_area(self, area: Area, side: Arrow) -> Area:
