@@ -101,9 +101,9 @@ class Blueprint:
 
     def _precompute_max_costs(self):
         """Map each resource (except geodes) to its max amount to build any robot."""
-        self.max_costs = {
-            resource: max(self.costs[robot][resource] for robot in RESOURCES)
-            for resource in RESOURCES[:-1]}
+        self.max_costs = {resource: max(self.costs[robot][resource]
+                                        for robot in RESOURCES if robot != resource)
+                          for resource in RESOURCES[:-1]}
 
     def _find_max_geode_production(self, operation_time: int):
         """Max amount of geodes the robots of this Factory can crack in n minutes."""
@@ -126,6 +126,10 @@ class Blueprint:
     def _get_viable_targets(self, stock: Stock) -> list[tuple[str | None, int]]:
         """Pick next robot to build (or None), with required gather + building rounds."""
         good_options = []
+        # General rules:
+        only_gathering_remains_option = None, stock.time
+        if stock.time <= 1:
+            return [only_gathering_remains_option]
         # Rules for non-geode resources:
         for option in RESOURCES[:-1]:
             required_rounds = self._get_rounds_for_building(stock=stock, robot=option)
@@ -145,7 +149,7 @@ class Blueprint:
             good_options.append(("geode", geode_rounds))
         # If no good options are found, just keep gathering for the remaining time:
         if len(good_options) == 0:
-            return [(None, stock.time)]
+            return [only_gathering_remains_option]
         return good_options
 
     def _get_rounds_for_building(self, stock: Stock, robot: str) -> int:
