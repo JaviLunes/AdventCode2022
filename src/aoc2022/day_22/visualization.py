@@ -24,7 +24,7 @@ def plot_board(board: Board) -> Figure:
     """Plot the tiles of a Board as 2D cells in a mosaic tessellation."""
     cells = _build_board_cells(board=board).values()
     plotter = Grid2DPlotter(
-        cells=cells, empty_value="Undefined", palette=CELL_COLOURS,
+        cells=cells, empty_value="Off-map", palette=CELL_COLOURS,
         legend=False, title=False)
     fig = plotter.plot_xy()
     fig.axes[0].invert_yaxis()
@@ -37,7 +37,7 @@ def plot_traveller(traveller: Traveller, board: Board) -> Figure:
     cells = _build_board_cells(board=board)
     cells.update(_build_traveller_cells(traveller=traveller))
     plotter = Grid2DPlotter(
-        cells=cells.values(), palette=CELL_COLOURS, empty_value="Undefined",
+        cells=cells.values(), palette=CELL_COLOURS, empty_value="Off-map",
         legend=False, title=False, annotations_kwargs=dict(
             size=24, color="white", weight="bold", ha="center", va="center"))
     fig = plotter.plot_xy()
@@ -50,8 +50,8 @@ def _build_board_cells(board: Board) -> dict[tuple[int, int], CellND]:
     """Create one cell for each tile in the board, and map it to its row and column."""
     cells_map, area_names = {}, iter("ABCDEF")
     for area in board.areas:
-        suffix = "" if area.is_void else f"_{next(area_names)}"
-        items = ((r, c, TILE_NAMES[v] + suffix) for (r, c), v in area.tiles)
+        suffix = f"_{next(area_names)}"
+        items = ((row, col, TILE_NAMES[v] + suffix) for (row, col), v in area.tiles)
         cells_map.update({(r, c): CellND(x=c, y=r, value=v) for r, c, v in items})
     return cells_map
 
@@ -59,6 +59,7 @@ def _build_board_cells(board: Board) -> dict[tuple[int, int], CellND]:
 def _build_traveller_cells(traveller: Traveller) -> dict[tuple[int, int], CellND]:
     """Create cells holding the traveller's current and past positions in the board."""
     current = len(traveller.all_positions) - 1
-    return {(row, col): CellND(x=col, y=row, annotation=str(facing),
-                               value="Traveller" if i == current else "Trail")
-            for i, (row, col, facing) in enumerate(traveller.all_positions)}
+    return {(row, col): CellND(
+        x=col, y=row, annotation=str(facing),
+        value="Traveller" if i == current else "Trail")
+            for i, ((row, col), facing) in enumerate(traveller.all_positions)}
