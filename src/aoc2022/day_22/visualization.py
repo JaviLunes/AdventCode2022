@@ -22,10 +22,11 @@ TILE_NAMES = {" ": "Off-map", ".": "Open", "#": "Wall"}
 
 def plot_board(board: Board) -> Figure:
     """Plot the tiles of a Board as 2D cells in a mosaic tessellation."""
-    cells = _build_board_cells(board=board).values()
+    cells = _build_board_cells(board=board, edges=True).values()
     plotter = Grid2DPlotter(
         cells=cells, empty_value="Off-map", palette=CELL_COLOURS,
-        legend=False, title=False)
+        legend=False, title=False, annotations_kwargs=dict(
+            size=7.5, color="black", weight="bold", ha="center", va="center"))
     fig = plotter.plot_xy()
     fig.axes[0].invert_yaxis()
     fig.tight_layout(pad=0.25)
@@ -34,7 +35,7 @@ def plot_board(board: Board) -> Figure:
 
 def plot_traveller(traveller: Traveller, board: Board) -> Figure:
     """Plot the current location of a BoardTraveller at its Board."""
-    cells = _build_board_cells(board=board)
+    cells = _build_board_cells(board=board, edges=False)
     cells.update(_build_traveller_cells(traveller=traveller))
     plotter = Grid2DPlotter(
         cells=cells.values(), palette=CELL_COLOURS, empty_value="Off-map",
@@ -46,13 +47,19 @@ def plot_traveller(traveller: Traveller, board: Board) -> Figure:
     return fig
 
 
-def _build_board_cells(board: Board) -> dict[tuple[int, int], CellND]:
+def _build_board_cells(board: Board, edges: bool) -> dict[tuple[int, int], CellND]:
     """Create one cell for each tile in the board, and map it to its row and column."""
     cells_map, area_names = {}, iter("ABCDEF")
     for area in board.areas:
         suffix = f"_{next(area_names)}"
         items = ((row, col, TILE_NAMES[v] + suffix) for (row, col), v in area.tiles)
         cells_map.update({(r, c): CellND(x=c, y=r, value=v) for r, c, v in items})
+        if edges:
+            for edge in area.edges.values():
+                text = f"{edge.facing_in}{edge.id_}"
+                for tile, value in edge.cells_in:
+                    if value == ".":
+                        cells_map[tile].annotation += text
     return cells_map
 
 

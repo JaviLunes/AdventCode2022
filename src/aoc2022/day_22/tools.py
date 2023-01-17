@@ -3,11 +3,13 @@
 
 # Standard library imports:
 from enum import Enum
+from itertools import count
+from string import ascii_lowercase
 
 # Define type aliases:
 Tile = tuple[int, int]
 Cell = tuple[Tile, str]
-TilePair = list[tuple[Tile, Tile]]
+TilePair = tuple[Tile, Tile]
 
 
 class Arrow(Enum):
@@ -103,24 +105,35 @@ class Traveller:
 class Edge:
     """Line separating adjacent tiles belonging in different areas of a board."""
     __slots__ = ["cells_in", "cells_out", "facing_in", "facing_out",
-                 "area_in", "area_out", "map"]
+                 "area_in", "area_out", "map", "id_"]
 
-    def __init__(self, cells_in: list[Cell], cells_out: list[Cell],
+    def __init__(self, id_: str, cells_in: list[Cell], cells_out: list[Cell],
                  facing_in: Arrow, facing_out: Arrow, area_tile_in: Tile,
                  area_tile_out: Tile):
-        self.cells_in, self.cells_out = cells_in, cells_out
+        self.id_ = id_
+        self.cells_in, self.cells_out = self._filter_walls(
+            cells_in=cells_in, cells_out=cells_out)
         self.facing_in, self.facing_out = facing_in, facing_out
         self.area_in, self.area_out = area_tile_in, area_tile_out
         paired_tiles = self._pair_borders()
         self.map = {tl1: tl2 for tl1, tl2 in paired_tiles}
 
-    def _pair_borders(self) -> TilePair:
+    @staticmethod
+    def _filter_walls(cells_in: list[Cell], cells_out: list[Cell]) \
+            -> tuple[list[Cell], list[Cell]]:
+        """Remove cell pairs where any member is a wall cell."""
+        zipped = zip(cells_in, cells_out)
+        cells_in, cells_out = zip(*[
+            (c1, c2) for c1, c2 in zipped if c1[1] != "#" and c2[1] != "#"])
+        return cells_in, cells_out
+
+    def _pair_borders(self) -> list[TilePair]:
         """Zip pairs of tiles across the shared border of the two areas."""
         return [((r1, c1), (r2, c2)) for ((r1, c1), v1), ((r2, c2), v2)
                 in zip(self.cells_in, self.cells_out) if v1 != "#" and v2 != "#"]
 
     def __repr__(self) -> str:
-        return f"{self.area_in} {self.facing_in} {self.area_out}"
+        return f"E{self.id_} {self.facing_in}"
 
     def warp_over(self, traveller: Traveller) -> Tile:
         """For a known row, column and facing, move to its linked warp position."""
@@ -138,7 +151,7 @@ class Edge:
     def inverse(self) -> "Edge":
         """New Edge linking the same two area borders, with inverted in/out roles."""
         return Edge(
-            cells_in=self.cells_out, cells_out=self.cells_in,
+            id_=self.id_, cells_in=self.cells_out, cells_out=self.cells_in,
             facing_in=self.facing_out.inverse, facing_out=self.facing_in.inverse,
             area_tile_in=self.area_out, area_tile_out=self.area_in)
 
@@ -174,7 +187,8 @@ class Area:
         self._right = self._left + self._size - 1
 
     def __repr__(self) -> str:
-        return f"{self.area_tile}: {list(self._map.values())}"
+        edges = [repr(self.edges[direction]) for direction in Arrow]
+        return f"{self.area_tile}: {edges}"
 
     def get_border_tiles(self, side: Arrow) -> list[tuple[Tile, str]]:
         """List all tiles (with their tile value) in this Area at its target side."""
@@ -259,6 +273,7 @@ class Board:
     """Strangely-shaped board of open, walled and off-limits 2D tiles."""
     def __init__(self, rows: list[str], area_size: int, cube_mode: bool,
                  hardcoded_edges: dict = None):
+        self._edge_count = count(0)
         self._sizes = len(rows) // area_size, len(rows[0]) // area_size
         self._area_size = area_size
         self._register_borders()
@@ -306,9 +321,11 @@ class Board:
             if inverted_out:
                 cells_out = cells_out[::-1]
             # Build and register edge:
-            edge = Edge(cells_in=cells_in, cells_out=cells_out,
-                        facing_in=facing_in, facing_out=facing_out,
-                        area_tile_in=area_tile_in, area_tile_out=area_tile_out)
+            id_ = ascii_lowercase[next(self._edge_count)]
+            edge = Edge(
+                id_=id_, cells_in=cells_in, cells_out=cells_out,
+                facing_in=facing_in, facing_out=facing_out,
+                area_tile_in=area_tile_in, area_tile_out=area_tile_out)
             area_in.register_edge(side=facing_in, edge=edge)
             area_out.register_edge(side=facing_out.inverse, edge=edge.inverse)
 
@@ -320,8 +337,9 @@ class Board:
             while area.missing_edges:
                 side = area.missing_edges.pop(0)
                 area_side = self._get_adjacent_plane_area(area=area, side=side)
+                id_ = ascii_lowercase[next(self._edge_count)]
                 edge = Edge(
-                    cells_in=area.get_border_tiles(side=side),
+                    id_=id_, cells_in=area.get_border_tiles(side=side),
                     cells_out=area_side.get_border_tiles(side=side.inverse),
                     facing_in=side, facing_out=side,
                     area_tile_in=area.area_tile, area_tile_out=area_side.area_tile)
