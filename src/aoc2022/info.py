@@ -18,6 +18,6 @@ PUZZLE_NAMES = tuple([
     "Day 15: Beacon Exclusion Zone", "Day 16: Proboscidea Volcanium",
     "Day 17: Pyroclastic Flow", "Day 18: Boiling Boulders",
     "Day 19: Not Enough Minerals", "Day 20: Grove Positioning System",
-    "Day 21: Monkey Math", "Day 22: Monkey Map", "Day 23: Unstable Diffusion", "-",
-    "-"])
+    "Day 21: Monkey Math", "Day 22: Monkey Map", "Day 23: Unstable Diffusion",
+    "Day 24: Blizzard Basin", "-"])
 YEAR = 2022
