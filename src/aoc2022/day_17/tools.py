@@ -2,100 +2,93 @@
 """Tools used for solving the Day 17: Pyroclastic Flow puzzle."""
 
 # Standard library imports:
-import abc
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+
+# Set constants:
+ROCK_TYPES = ["HRock", "CrossRock", "LRock", "VRock", "SquareRock"]
 
 
-class Rock(metaclass=abc.ABCMeta):
+class Rock:
     """Group of rock blocks fused together in a fixed shape."""
-    __slots__ = ["origin"]
+    __slots__ = ["blocks", "left", "right", "top", "bottom"]
 
-    def __init__(self, left_edge: int, bottom_edge: int):
-        self.origin = (left_edge, bottom_edge)
+    def __init__(self, rock_shape: str, left_edge: int, bottom_edge: int):
+        building_func = self._select_building_function(rock_shape=rock_shape)
+        self.blocks = building_func(x_origin=left_edge, y_origin=bottom_edge)
+        self.left = min(x for x, _ in self.blocks)
+        self.right = max(x for x, _ in self.blocks)
+        self.top = max(y for _, y in self.blocks)
+        self.bottom = min(y for _, y in self.blocks)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}: {self.origin}"
+        return f"{self.__class__.__name__}: {(self.left, self.bottom)}"
 
-    @abc.abstractmethod
-    def _build_blocks(self) -> set[tuple[int, int]]:
+    def _select_building_function(self, rock_shape: str) -> Callable:
         """Generate all blocks forming this Rock."""
-        raise NotImplementedError
+        if rock_shape == "HRock":
+            return self._build_h_blocks
+        if rock_shape == "CrossRock":
+            return self._build_cross_blocks
+        if rock_shape == "LRock":
+            return self._build_l_blocks
+        if rock_shape == "VRock":
+            return self._build_v_blocks
+        if rock_shape == "SquareRock":
+            return self._build_square_blocks
 
-    @property
-    def blocks(self) -> set[tuple[int, int]]:
-        """Provide all blocks forming this Rock."""
-        return self._build_blocks()
+    @staticmethod
+    def _build_h_blocks(x_origin: int, y_origin: int) -> set[tuple[int, int]]:
+        """Generate blocks composing a 4x1 horizontal line pattern."""
+        return {(x_origin + d, y_origin) for d in range(4)}
 
-    @property
-    def top(self) -> int:
-        """Provide the Y coord of the highest block in this Rock."""
-        return max(block[1] for block in self.blocks)
+    @staticmethod
+    def _build_v_blocks(x_origin: int, y_origin: int) -> set[tuple[int, int]]:
+        """Generate blocks composing a 4x1 vertical line pattern."""
+        return {(x_origin, y_origin + d) for d in range(4)}
 
-    def any_at_y(self, y: int) -> bool:
-        """Check if any of this Rock's blocks is at the given Y coordinate."""
-        return any(block[1] == y for block in self.blocks)
+    @staticmethod
+    def _build_cross_blocks(x_origin: int, y_origin: int) -> set[tuple[int, int]]:
+        """Generate blocks composing a 3x3 cross pattern."""
+        h_blocks = [(x_origin + d, y_origin + 1) for d in range(3)]
+        tb_blocks = [(x_origin + 1, y_origin + d) for d in [0, 2]]
+        return set(h_blocks + tb_blocks)
 
-    def any_at_x(self, x: int) -> bool:
-        """Check if any of this Rock's blocks is at the given X coordinate."""
-        return any(block[0] == x for block in self.blocks)
+    @staticmethod
+    def _build_square_blocks(x_origin: int, y_origin: int) -> set[tuple[int, int]]:
+        """Generate blocks composing a 2x2 square pattern."""
+        b_blocks = [(x_origin + d, y_origin) for d in range(2)]
+        t_blocks = [(x_origin + d, y_origin + 1) for d in range(2)]
+        return set(b_blocks + t_blocks)
+
+    @staticmethod
+    def _build_l_blocks(x_origin: int, y_origin: int) -> set[tuple[int, int]]:
+        """Generate blocks composing a 3x3 L pattern flipped along the Y axis."""
+        h_blocks = [(x_origin + d, y_origin) for d in range(3)]
+        v_blocks = [(x_origin + 2, y_origin + d) for d in range(1, 3)]
+        return set(h_blocks + v_blocks)
 
     def move_down(self):
         """Move this Rock one unit down."""
-        self.origin = (self.origin[0], self.origin[1] - 1)
+        self.blocks = {(x, y - 1) for x, y in self.blocks}
+        self.bottom -= 1
+        self.top -= 1
 
     def move_down_inv(self):
         """Move this Rock one unit up."""
-        self.origin = (self.origin[0], self.origin[1] + 1)
+        self.blocks = {(x, y + 1) for x, y in self.blocks}
+        self.bottom += 1
+        self.top += 1
 
     def move_side(self, side: str):
         """Move this Rock one unit towards '<' (left) or '>' (right)."""
         d_x = 1 if side == ">" else -1
-        self.origin = (self.origin[0] + d_x, self.origin[1])
+        self.blocks = {(x + d_x, y) for x, y in self.blocks}
+        self.left += d_x
+        self.right += d_x
 
     def move_side_inv(self, side: str):
         """Move this Rock one unit from-wards '<' (left) or '>' (right)."""
         self.move_side(side="<" if side == ">" else ">")
-
-
-class HRock(Rock):
-    """Rock composing a 4x1 horizontal line pattern."""
-    def _build_blocks(self) -> set[tuple[int, int]]:
-        """Generate all blocks forming this Rock."""
-        return {(self.origin[0] + d, self.origin[1]) for d in range(4)}
-
-
-class VRock(Rock):
-    """Rock composing a 4x1 vertical line pattern."""
-    def _build_blocks(self) -> set[tuple[int, int]]:
-        """Generate all blocks forming this Rock."""
-        return {(self.origin[0], self.origin[1] + d) for d in range(4)}
-
-
-class CrossRock(Rock):
-    """Rock composing a 3x3 cross pattern."""
-    def _build_blocks(self) -> set[tuple[int, int]]:
-        """Generate all blocks forming this Rock."""
-        h_blocks = [(self.origin[0] + d, self.origin[1] + 1) for d in range(3)]
-        tb_blocks = [(self.origin[0] + 1, self.origin[1] + d) for d in [0, 2]]
-        return set(h_blocks + tb_blocks)
-
-
-class SquareRock(Rock):
-    """Rock composing a 2x2 square pattern."""
-    def _build_blocks(self) -> set[tuple[int, int]]:
-        """Generate all blocks forming this Rock."""
-        b_blocks = [(self.origin[0] + d, self.origin[1]) for d in range(2)]
-        t_blocks = [(self.origin[0] + d, self.origin[1] + 1) for d in range(2)]
-        return set(b_blocks + t_blocks)
-
-
-class LRock(Rock):
-    """Rock composing a 3x3 L pattern flipped along the Y axis."""
-    def _build_blocks(self) -> set[tuple[int, int]]:
-        """Generate all blocks forming this Rock."""
-        h_blocks = [(self.origin[0] + d, self.origin[1]) for d in range(3)]
-        v_blocks = [(self.origin[0] + 2, self.origin[1] + d) for d in range(1, 3)]
-        return set(h_blocks + v_blocks)
 
 
 class Thrower:
@@ -120,14 +113,9 @@ class RockPit:
 
     def __init__(self, jet_patterns: str):
         self.jets = Thrower(items=jet_patterns)
-        self.shapes = Thrower(items=[HRock, CrossRock, LRock, VRock, SquareRock])
+        self.shapes = Thrower(items=ROCK_TYPES)
         self.tower_height = 0
-        self.block_map = self._get_empty_block_rows()
-
-    def _get_empty_block_rows(self, y_start: int = 1) -> dict[tuple[int, int], bool]:
-        """Generate a dictionary of (width x 12) blocks marked as empty."""
-        xs, ys = range(1, self.width + 1), range(y_start, y_start + 12)
-        return {(x, y): False for y in ys for x in xs}
+        self.resting_blocks = set()
 
     def drop_rocks(self, n_rocks: int):
         """Create and drop a given number of new Rock objects."""
@@ -136,8 +124,8 @@ class RockPit:
 
     def _drop_rock(self):
         """Create a new Rock at the pit top and let it fall until it rests."""
-        shape_cls = next(self.shapes)
-        rock: Rock = shape_cls(left_edge=3, bottom_edge=self.tower_height + 4)
+        rock_shape, height = next(self.shapes), self.tower_height + 4
+        rock: Rock = Rock(rock_shape=rock_shape, left_edge=3, bottom_edge=height)
         while True:
             # Try to push the falling rock sideways with a jet:
             jet = next(self.jets)
@@ -153,36 +141,23 @@ class RockPit:
 
     def _crashed_side(self, rock: Rock) -> bool:
         """Check if the provided Rock has moved sidewards to an illegal position."""
-        if rock.any_at_x(x=0):  # The rock crashed into the left wall.
-            return True
-        if rock.any_at_x(x=self.width + 1):  # The rock crashed into the right wall.
-            return True
-        if self._crashed_tower(rock=rock):
-            return True
+        if bool(rock.blocks & self.resting_blocks):
+            return True  # The rock crashed into the tower of resting blocks.
+        if rock.left <= 0:
+            return True  # The rock crashed into the left wall.
+        if rock.right >= self.width + 1:
+            return True  # The rock crashed into the right wall.
         return False
 
     def _crashed_down(self, rock: Rock) -> bool:
         """Check if the provided Rock has moved downwards to an illegal position."""
-        if rock.any_at_y(y=0):  # The rock crashed into the floor.
-            return True
-        if self._crashed_tower(rock=rock):
-            return True
+        if bool(rock.blocks & self.resting_blocks):
+            return True  # The rock crashed into the tower of resting blocks.
+        if rock.bottom <= 0:
+            return True  # The rock crashed into the pit floor.
         return False
-
-    def _crashed_tower(self, rock: Rock) -> bool:
-        """Check if the provided Rock has moved into any other Rock resting."""
-        return any(self.block_map.get(block, False) for block in rock.blocks)
 
     def _register_rock(self, rock: Rock):
         """Register a resting Rock's blocks on the block map."""
-        new_blocks = rock.blocks
-        # Add new empty rows to map if needed:
-        top_new_y = max(y for _, y in new_blocks)
-        top_old_y = list(self.block_map.keys())[-1][1]
-        if top_old_y < top_new_y:
-            empty_blocks = self._get_empty_block_rows(y_start=top_old_y + 1)
-            self.block_map.update(empty_blocks)
-        # Mark new blocks:
-        self.block_map.update({block: True for block in new_blocks})
-        # Update tower height:
-        self.tower_height = max(self.tower_height, top_new_y)
+        self.resting_blocks |= rock.blocks
+        self.tower_height = max(self.tower_height, rock.top)

@@ -2,7 +2,11 @@
 """Tests for the Day 17: Pyroclastic Flow puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools.puzzle_solving import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_17.tools import RockPit
@@ -54,3 +58,16 @@ class ExampleTests(unittest.TestCase):
         """The rock tower reaches a HUGE height after 1e12 rocks have stopped falling."""
         self.pit.drop_rocks(n_rocks=int(1e12))
         self.assertEqual(1514285714288, self.pit.tower_height)
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_17/puzzle_input.txt"
+        patterns = read_puzzle_input(input_file=input_file)[0]
+        self.pit = RockPit(jet_patterns=patterns)
+
+    def test_solution_for_part_1(self):
+        """After 2022 thrown rocks, the tower reaches a height of 3117 units."""
+        self.pit.drop_rocks(n_rocks=2022)
+        self.assertEqual(3117, self.pit.tower_height)
