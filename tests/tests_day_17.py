@@ -20,43 +20,42 @@ class ExampleTests(unittest.TestCase):
 
     def test_rock_height_after_1_rock(self):
         """The rock tower reaches 1 height after 1 rock have stopped falling."""
-        self.pit.drop_rocks(n_rocks=1)
+        self.pit.drop_rocks(remaining_rocks=1)
         self.assertEqual(1, self.pit.tower_height)
 
     def test_rock_height_after_2_rocks(self):
         """The rock tower reaches 4 height after 2 rocks have stopped falling."""
-        self.pit.drop_rocks(n_rocks=2)
+        self.pit.drop_rocks(remaining_rocks=2)
         self.assertEqual(4, self.pit.tower_height)
 
     def test_rock_height_after_3_rocks(self):
         """The rock tower reaches 6 height after 2 rocks have stopped falling."""
-        self.pit.drop_rocks(n_rocks=3)
+        self.pit.drop_rocks(remaining_rocks=3)
         self.assertEqual(6, self.pit.tower_height)
 
     def test_rock_height_after_4_rocks(self):
         """The rock tower reaches 7 height after 2 rocks have stopped falling."""
-        self.pit.drop_rocks(n_rocks=4)
+        self.pit.drop_rocks(remaining_rocks=4)
         self.assertEqual(7, self.pit.tower_height)
 
     def test_rock_height_after_5_rocks(self):
         """The rock tower reaches 9 height after 2 rocks have stopped falling."""
-        self.pit.drop_rocks(n_rocks=5)
+        self.pit.drop_rocks(remaining_rocks=5)
         self.assertEqual(9, self.pit.tower_height)
 
     def test_rock_height_after_10_rocks(self):
         """The rock tower reaches 17 height after 2 rocks have stopped falling."""
-        self.pit.drop_rocks(n_rocks=10)
+        self.pit.drop_rocks(remaining_rocks=10)
         self.assertEqual(17, self.pit.tower_height)
 
     def test_rock_height_after_2022_rocks(self):
         """The rock tower reaches 3068 height after 2022 rocks have stopped falling."""
-        self.pit.drop_rocks(n_rocks=2022)
+        self.pit.drop_rocks(remaining_rocks=2022)
         self.assertEqual(3068, self.pit.tower_height)
 
-    @unittest.skip
     def test_rock_height_after_1e12_rocks(self):
         """The rock tower reaches a HUGE height after 1e12 rocks have stopped falling."""
-        self.pit.drop_rocks(n_rocks=int(1e12))
+        self.pit.drop_rocks(remaining_rocks=int(1e12))
         self.assertEqual(1514285714288, self.pit.tower_height)
 
 
@@ -69,5 +68,10 @@ class SolutionTests(unittest.TestCase):
 
     def test_solution_for_part_1(self):
         """After 2022 thrown rocks, the tower reaches a height of 3117 units."""
-        self.pit.drop_rocks(n_rocks=2022)
+        self.pit.drop_rocks(remaining_rocks=2022)
         self.assertEqual(3117, self.pit.tower_height)
+
+    def test_solution_for_part_2(self):
+        """After 1e12 thrown rocks, the tower reaches a height of 1553314121019 units."""
+        self.pit.drop_rocks(remaining_rocks=int(1e12))
+        self.assertEqual(1553314121019, self.pit.tower_height)

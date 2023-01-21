@@ -14,5 +14,8 @@ def compute_solution() -> tuple[int, int]:
     input_file = Path(__file__).parents[1] / "day_17/puzzle_input.txt"
     lines = read_puzzle_input(input_file=input_file)
     pit = RockPit(jet_patterns=lines[0])
-    pit.drop_rocks(n_rocks=2022)
-    return pit.tower_height, None
+    pit.drop_rocks(remaining_rocks=2022)
+    tower_after_2022 = pit.tower_height
+    pit.drop_rocks(remaining_rocks=int(1e12) - 2022)
+    tower_after_1e12 = pit.tower_height
+    return tower_after_2022, tower_after_1e12
