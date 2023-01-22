@@ -5,7 +5,7 @@
 from typing import Iterable
 
 # Third party imports:
-from aoc_tools.algorithms.a_star_search import ASNode, a_star_search
+from aoc_tools.algorithms.graphs.a_star_search import ASNode, a_star_search
 
 # Set constants:
 DELTA_MAP = {"^": (0, 1), ">": (1, 0), "v": (0, -1), "<": (-1, 0)}
@@ -144,17 +144,13 @@ class Expedition(ASNode):
 
     def __init__(self, cell: Cell, t: int, goal: Cell, snow_map: SnowMap,
                  parent: "Expedition" = None):
-        super().__init__(parent=parent)
         self.cell, self.t = cell, t
         self.goal, self.snow_map = goal, snow_map
+        id_ = cell, t, tuple(sorted(self.reachable_cells))
+        super().__init__(id_=id_, hash_=hash(id_), parent=parent)
 
     def __repr__(self) -> str:
         return f"{self.cell}: {len(self.reachable_cells)} moves ({self.t} min)"
-
-    @property
-    def id(self) -> str:
-        """String identifier unique to this particular Expedition."""
-        return f"{self.cell}{self.t}{sorted(self.reachable_cells)}"
 
     @property
     def g(self) -> int:

@@ -6,25 +6,19 @@ from collections.abc import Iterable
 from string import ascii_lowercase
 
 # Third party imports:
-from aoc_tools.algorithms.a_star_search import Node, a_star_search
+from aoc_tools.algorithms.graphs.a_star_search import ASNode, a_star_search
 
 
-class TrailStage(Node):
+class TrailStage(ASNode):
     """Each discrete location visited during the ascension from the start point."""
     __slots__ = ["x", "y", "z", "n", "_heights_map"]
 
     def __init__(self, x: int, y: int, n: int, heights_map: dict[tuple[int, int], int],
                  parent: "TrailStage" = None):
-        super().__init__(parent=parent)
-        self.x, self.y = x, y
-        self.n = n
-        self.z = heights_map[(x, y)]
+        id_ = (x, y)
+        super().__init__(id_=id_, hash_=hash(id_), parent=parent)
+        self.x, self.y, self.n, self.z = x, y, n, heights_map[id_]
         self._heights_map = heights_map
-
-    @property
-    def id(self) -> str:
-        """Provide a string identifier unique to this TrailStage."""
-        return f"{self.x},{self.y}"
 
     @property
     def g(self) -> int:
@@ -90,14 +84,14 @@ class ElvesMaps:
         x_range, y_range = range(len(heights[0])), range(len(heights))
         return {(x, y): level_map[heights[y][x]] for x in x_range for y in y_range}
 
-    def build_route_from_start(self) -> list[Node]:
+    def build_route_from_start(self) -> list[TrailStage]:
         """Find the shortest node-path from given start to the end using A* search."""
         start = TrailStage(*self._start, n=0, heights_map=self._heights_map, parent=None)
         goal_node = a_star_search(
             start=start, goal_func=lambda node: node.xy == self._goal)
         return goal_node.lineage[::-1]
 
-    def build_scenic_route(self) -> list[Node]:
+    def build_scenic_route(self) -> list[TrailStage]:
         """Find the shortest node-path from any 'a' node to the end using A* search."""
         target_height = self._heights_map[self._start]
         start = DescentStage(
