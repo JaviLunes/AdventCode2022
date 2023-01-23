@@ -5,7 +5,7 @@
 from itertools import product
 
 # Third party imports:
-from aoc_tools.algorithms.full_search import FNode, full_search
+from aoc_tools.algorithms.graphs.full_search import FNode, full_search
 
 
 class Cell(FNode):
@@ -13,19 +13,16 @@ class Cell(FNode):
     __slots__ = ["x", "y", "z", "_domain"]
 
     def __init__(self, x: int, y: int, z: int, domain: "Domain" = None):
+        id_ = (x, y, z)
+        super().__init__(id_=id_, hash_=hash(id_))
         self.x, self.y, self.z = x, y, z
         self._domain = domain
 
     def __hash__(self) -> int:
-        return hash(self.id)
+        return self._hash
 
     def __eq__(self, other: "Cell") -> bool:
         return self.x == other.x and self.y == other.y and self.z == other.z
-
-    @property
-    def id(self) -> str:
-        """Provide a string identifier unique to this FNode."""
-        return f"{self.x},{self.y},{self.z}"
 
     def get_successors(self) -> set["Cell"]:
         """Hypothetical cells that would be adjacent to each face of this Cell."""
