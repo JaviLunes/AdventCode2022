@@ -16,7 +16,7 @@ class ExampleTests(unittest.TestCase):
 
     def test_number_of_fully_overlapping_assignment_pairs(self):
         """The number of assignment pairs with full overlap is 2."""
-        self.assertEqual(2, self.reviewer.count_ful_overlaps)
+        self.assertEqual(2, self.reviewer.count_full_overlaps)
 
     def test_number_of_partially_overlapping_assignment_pairs(self):
         """The number of assignment pairs with partial overlap is 4."""

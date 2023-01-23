@@ -14,4 +14,4 @@ def compute_solution() -> tuple[int, int]:
     input_file = Path(__file__).parents[1] / "day_4/puzzle_input.txt"
     lines = read_puzzle_input(input_file=input_file)
     reviewer = CleanupReviewer(assignment_pairs=lines)
-    return reviewer.count_ful_overlaps, reviewer.count_partial_overlaps
+    return reviewer.count_full_overlaps, reviewer.count_partial_overlaps

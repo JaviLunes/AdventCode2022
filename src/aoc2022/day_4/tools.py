@@ -24,7 +24,7 @@ class CleanupReviewer:
         return (lambda a, b: range(int(a), int(b) + 1))(*string.split("-"))
 
     @property
-    def count_ful_overlaps(self) -> int:
+    def count_full_overlaps(self) -> int:
         """Provide the count of pairs where one range fully contains the other."""
         return sum([(set(a) <= set(b) or set(b) <= set(a)) for a, b in self.pairs])
 
