@@ -2,7 +2,11 @@
 """Tests for the Day 15: Beacon Exclusion Zone puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_15.tools import Constellation, Point, Sensor
@@ -66,3 +70,21 @@ class CustomTests(unittest.TestCase):
         sensor = Sensor(x=8, y=7, beacon_x=2, beacon_y=10)
         self.assertEqual(9, sensor.exclusion_radius)
         self.assertEqual(40, len(list(sensor.perimeter_points)))
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_15/puzzle_input.txt"
+        sensor_reports = read_puzzle_input(input_file=input_file)
+        self.constellation = Constellation.from_report(report=sensor_reports)
+
+    def test_solution_for_part_1(self):
+        """There are 5525847 positions at row 2000000 guaranteed to not have a beacon."""
+        excluded_points = self.constellation.count_excluded_points_at_row(y=2000000)
+        self.assertEqual(5525847, excluded_points)
+
+    def test_solution_for_part_2(self):
+        """The tuning frequency of the distress beacon is 13340867187704."""
+        beacon = self.constellation.find_distress_beacon(search_area_side=4000000)
+        self.assertEqual(13340867187704, beacon.tuning_freq)

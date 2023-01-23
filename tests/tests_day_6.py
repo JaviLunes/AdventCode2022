@@ -2,7 +2,11 @@
 """Tests for the Day 6: Tuning Trouble puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_6.tools import StreamDecoder
@@ -67,3 +71,19 @@ class ExampleTests(unittest.TestCase):
         """The first message starts at character position 26."""
         decoder = StreamDecoder(datastream=self.stream_5)
         self.assertEqual(26, decoder.first_message_start)
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_6/puzzle_input.txt"
+        lines = read_puzzle_input(input_file=input_file)
+        self.decoder = StreamDecoder(datastream="".join(lines))
+
+    def test_solution_for_part_1(self):
+        """The first start-of-packet marker is at character position 1896."""
+        self.assertEqual(1896, self.decoder.first_packet_start)
+
+    def test_solution_for_part_2(self):
+        """The first start-of-message marker is at character position 3452."""
+        self.assertEqual(3452, self.decoder.first_message_start)

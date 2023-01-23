@@ -2,7 +2,11 @@
 """Tests for the Day 16: Proboscidea Volcanium puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_16.tools import ValveSim, TunnelNetwork
@@ -44,3 +48,21 @@ class ExampleTests(unittest.TestCase):
         """The total pressure released by the best possible opening plan is 1707."""
         sim = ValveSim.from_scan_report(scan_report=self.scan_output, total_time=26)
         self.assertEqual(1707, sim.find_max_release_with_help())
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_16/puzzle_input.txt"
+        self.scan_output = read_puzzle_input(input_file=input_file)
+        self.network = TunnelNetwork.from_scan_report(scan_report=self.scan_output)
+
+    def test_solution_for_part_1(self):
+        """The most pressure releasable in 30 minutes is 2124."""
+        sim = ValveSim.from_scan_report(scan_report=self.scan_output, total_time=30)
+        self.assertEqual(2124, sim.find_max_release())
+
+    def test_solution_for_part_2(self):
+        """The most pressure releasable in 26 minutes with help is 2775."""
+        sim = ValveSim.from_scan_report(scan_report=self.scan_output, total_time=26)
+        self.assertEqual(2775, sim.find_max_release_with_help())

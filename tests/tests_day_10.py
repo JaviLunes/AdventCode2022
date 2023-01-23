@@ -5,8 +5,10 @@
 from pathlib import Path
 import unittest
 
-# Local application imports:
+# Third party imports:
 from aoc_tools import read_puzzle_input
+
+# Local application imports:
 from aoc2022.day_10.tools import CPURegister, CRTScreen
 
 # Set constants:
@@ -101,3 +103,21 @@ class ExampleTests(unittest.TestCase):
         """The 6th line printed at the CRT screen must match the expected value."""
         expected_print = "#######.......#######.......#######....."
         self.assertEqual(expected_print, self.screen.pixels[5])
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_10/puzzle_input.txt"
+        program = read_puzzle_input(input_file=input_file)
+        self.register = CPURegister(program=program)
+        self.screen = CRTScreen(register=self.register)
+
+    def test_solution_for_part_1(self):
+        """The sum of signals' strengths at the 6 target cycles is 14360."""
+        self.assertEqual(14360, self.register.significant_strength)
+
+    # noinspection SpellCheckingInspection
+    def test_solution_for_part_2(self):
+        """The eight capital letters printed on the CRT screen are 'BGKAEREZ'."""
+        self.assertEqual("BGKAEREZ", self.screen.characters)

@@ -2,7 +2,11 @@
 """Tests for the Day 13: Distress Signal puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_13.tools import DistressSignal, Packet
@@ -99,3 +103,19 @@ class CustomTests(unittest.TestCase):
         packet_1 = Packet(value="[[[1],3],[],[]]")
         packet_2 = Packet(value="[[10,[[2,2],[6],[8],5]],[8,4]]")
         self.assertTrue(packet_1 < packet_2)
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_13/puzzle_input.txt"
+        lines = read_puzzle_input(input_file=input_file)
+        self.distress_signal = DistressSignal.from_strings(signal_lines=lines)
+
+    def test_solution_for_part_1(self):
+        """The indexes of the Packet pairs that are in the right order sum 6420."""
+        self.assertEqual(6420, self.distress_signal.ordered_pairs_sum)
+
+    def test_solution_for_part_2(self):
+        """The decoder key for the distress signal is 22000."""
+        self.assertEqual(22000, self.distress_signal.decoder_key_fast)

@@ -2,7 +2,11 @@
 """Tests for the Day 14: Regolith Reservoir puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_14.tools import AbyssCave, FloorCave, AbyssError, SourceError
@@ -62,3 +66,22 @@ class ExampleTests(unittest.TestCase):
         with self.assertRaises(SourceError):
             self.floor_cave.pour_while_possible(raise_error=True)
         self.assertEqual(93, len(self.floor_cave.sand_cells))
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_14/puzzle_input.txt"
+        self.rock_paths = read_puzzle_input(input_file=input_file)
+
+    def test_solution_for_part_1(self):
+        """Only 728 blocks of sand may be poured before they start falling."""
+        cave = AbyssCave(rock_paths=self.rock_paths)
+        cave.pour_while_possible(raise_error=False)
+        self.assertEqual(728, len(cave.sand_cells))
+
+    def test_solution_for_part_2(self):
+        """Only 27623 blocks of sand may be poured before they block the source."""
+        floor_cave = FloorCave(rock_paths=self.rock_paths)
+        floor_cave.pour_while_possible(raise_error=False)
+        self.assertEqual(27623, len(floor_cave.sand_cells))

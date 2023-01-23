@@ -2,7 +2,11 @@
 """Tests for the Day 20: Grove Positioning System puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_20.tools import CircularList, EncryptedFile, IndexInt
@@ -71,3 +75,20 @@ class ExampleTests(unittest.TestCase):
         strings = map(str, self.encrypted_values_0)
         file = EncryptedFile.from_strings(*strings)
         self.assertEqual(3, file.groove_sum)
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_20/puzzle_input.txt"
+        self.lines = read_puzzle_input(input_file=input_file)
+
+    def test_solution_for_part_1(self):
+        """The sum of the groove coordinates' values add to 17490."""
+        file = EncryptedFile.from_strings(*self.lines)
+        self.assertEqual(17490, file.groove_sum)
+
+    def test_solution_for_part_2(self):
+        """The sum of groove coordinates, with 10 passes and key, is 1632917375836."""
+        file = EncryptedFile.from_strings(*self.lines, key=811589153, passes=10)
+        self.assertEqual(1632917375836, file.groove_sum)

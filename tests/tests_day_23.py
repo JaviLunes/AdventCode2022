@@ -91,12 +91,12 @@ class SolutionTests(unittest.TestCase):
         scan_lines = read_puzzle_input(input_file=input_file)
         self.grove = ElfGrove.from_scan(scan_lines=scan_lines)
 
-    def test_empty_tiles_after_round_10(self):
+    def test_solution_for_part_1(self):
         """After completing 10 rounds, the Elves cover an 3996-empty-tile rectangle."""
         self.grove.evolve(rounds=10)
         self.assertEqual(3996, self.grove.empty_tiles)
 
-    def test_number_of_rounds_needed(self):
+    def test_solution_for_part_2(self):
         """The first round where no Elf needs to move is round 908."""
         self.grove.evolve_while_needed()
         self.assertEqual(908, self.grove.completed_rounds + 1)

@@ -2,7 +2,11 @@
 """Tests for the Day 21: Monkey Math puzzle."""
 
 # Standard library imports:
+from pathlib import Path
 import unittest
+
+# Third party imports:
+from aoc_tools import read_puzzle_input
 
 # Local application imports:
 from aoc2022.day_21.tools import MonkeyGang, FixedMonkeyGang
@@ -56,3 +60,20 @@ class ExampleTests(unittest.TestCase):
         """After fixing the mistranslation, you should yell the number 301."""
         gang = FixedMonkeyGang.from_strings(strings=self.monkeys)
         self.assertEqual(301, gang["humn"])
+
+
+class SolutionTests(unittest.TestCase):
+    def setUp(self) -> None:
+        """Define objects to be tested."""
+        input_file = Path(__file__).parents[1] / "src/aoc2022/day_21/puzzle_input.txt"
+        self.monkeys = read_puzzle_input(input_file=input_file)
+
+    def test_solution_for_part_1(self):
+        """The root monkey yells the number 155708040358220."""
+        gang = MonkeyGang.from_strings(strings=self.monkeys)
+        self.assertEqual(155708040358220, gang["root"])
+
+    def test_solution_for_part_2(self):
+        """In order to pass root's test, you must yell 3342154812537."""
+        gang = FixedMonkeyGang.from_strings(strings=self.monkeys)
+        self.assertEqual(3342154812537, gang["humn"])
